@@ -6,6 +6,7 @@ http://java.sun.com/docs/books/vmspec/2nd-edition/html/ClassFile.doc.html
 
 Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
 Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
+Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU Lesser General Public License as published by the Free
@@ -540,6 +541,148 @@ class LocalVariableAttributeInfo(AttributeInfo):
 class DeprecatedAttributeInfo(AttributeInfo):
     pass
 
+
+class VerificationTypeInfo:
+    def __init__(self, tag):
+        self.tag = tag
+class TopVariableInfo(VerificationTypeInfo):
+    TAG = 0
+    def init(self, data):
+        return data
+class IntegerVariableInfo(VerificationTypeInfo):
+    TAG = 1
+    def init(self, data):
+        return data
+class FloatVariableInfo(VerificationTypeInfo):
+    TAG = 2
+    def init(self, data):
+        return data
+class DoubleVariableInfo(VerificationTypeInfo):
+    TAG = 3
+    def init(self, data):
+        return data
+class LongVariableInfo(VerificationTypeInfo):
+    TAG = 4
+    def init(self, data):
+        return data
+class NullVariableInfo(VerificationTypeInfo):
+    TAG = 5
+    def init(self, data):
+        return data
+class UninitializedThisVariableInfo(VerificationTypeInfo):
+    TAG = 6
+    def init(self, data):
+        return data
+class ObjectVariableInfo(VerificationTypeInfo):
+    TAG = 7
+    def init(self, data):
+        self.cpool_index = u2(data)
+        return data[2:]
+class UninitializedVariableInfo(VerificationTypeInfo):
+    TAG = 8
+    def init(self, data):
+        self.offset = u2(data)
+        return data[2:]
+VARIABLE_INFO_CLASSES = (TopVariableInfo, IntegerVariableInfo, FloatVariableInfo, DoubleVariableInfo,
+                         LongVariableInfo, NullVariableInfo, UninitializedThisVariableInfo,
+                         ObjectVariableInfo, UninitializedVariableInfo)
+VARIABLE_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in VARIABLE_INFO_CLASSES])
+
+# Exception
+class UnknownVariableInfo:
+    pass
+
+def create_verification_type_info(data):
+    tag = u1(data[0:1])
+    if tag in VARIABLE_INFO_TAG_MAP:
+        return VARIABLE_INFO_TAG_MAP[tag](tag)
+    else:
+        raise UnknownVariableInfo, tag
+
+
+class StackMapFrame:
+    def __init__(self, frame_type):
+        self.frame_type = frame_type
+class SameFrame(StackMapFrame):
+    TYPE_LOWER = 0
+    TYPE_UPPER = 63
+    def init(self, data):
+        return data
+class SameLocals1StackItemFrame(StackMapFrame):
+    TYPE_LOWER = 64
+    TYPE_UPPER = 127
+    def init(self, data):
+        self.offset_delta = self.frame_type - 64
+        self.stack = [create_verification_type_info(data[0:1])]
+        return self.stack[0].init(data[1:])
+class SameLocals1StackItemFrameExtended(StackMapFrame):
+    TYPE_LOWER = 247
+    TYPE_UPPER = 247
+    def init(self, data):
+        self.offset_delta = u2(data[0:2])
+        data = data[2:]
+        self.stack = [create_verification_type_info(data[0:1])]
+        return self.stack[0].init(data[1:])
+class ChopFrame(StackMapFrame):
+    TYPE_LOWER = 248
+    TYPE_UPPER = 250
+    def init(self, data):
+        self.offset_delta = u2(data[0:2])
+        return data[2:]
+class SameFrameExtended(StackMapFrame):
+    TYPE_LOWER = 251
+    TYPE_UPPER = 251
+    def init(self, data):
+        self.offset_delta = u2(data[0:2])
+        return data[2:]
+class AppendFrame(StackMapFrame):
+    TYPE_LOWER = 252
+    TYPE_UPPER = 254
+    def init(self, data):
+        self.offset_delta = u2(data[0:2])
+        data = data[2:]
+        num_locals = self.frame_type - 251
+        self.locals = []
+        for ii in xrange(num_locals):
+            info = create_verification_type_info(data[0:1])
+            data = info.init(data[1:])
+            self.locals.append(info)
+        return data
+class FullFrame(StackMapFrame):
+    TYPE_LOWER = 255
+    TYPE_UPPER = 255
+    def init(self, data):
+        self.offset_delta = u2(data[0:2])
+        num_locals = u2(data[2:4])
+        data = data[4:]
+        self.locals = []
+        for ii in xrange(num_locals):
+            info = create_verification_type_info(data[0:1])
+            data = info.init(data[1:])
+            self.locals.append(info)
+        num_stack_items = u2(data[0:2])
+        data = data[2:]
+        self.stack = []
+        for ii in xrange(num_stack_items):
+            stack_item = create_verification_type_info(data[0:1])
+            data = stack_item.init(data[1:])
+            self.locals.append(stack_item)
+        return data
+FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
+                 ChopFrame, SameFrameExtended, AppendFrame, FullFrame)
+
+# Exception
+class UnknownStackFrame:
+    pass
+
+def create_stack_frame(data):
+    # Does not consume data, just does lookahead
+    frame_type = u1(data[0:1])
+    for cls in FRAME_CLASSES:
+        if frame_type >= cls.TYPE_LOWER and frame_type <= cls.TYPE_UPPER:
+            return cls(frame_type)
+    raise UnknownStackFrame, frame_type
+
 class StackMapTableAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
         self.class_file = class_file
@@ -548,9 +691,9 @@ class StackMapTableAttributeInfo(AttributeInfo):
         self.entries = []
         data = data[6:]
         for i in range(0, num_entries):
-            stack_map_frame = StackMapFrame()
-            data = stack_map_frame(data)
-            self.entries.append(stack_map_frame)
+            frame = create_stack_frame(data[0:1])
+            data = frame.init(data[1:])
+            self.entries.append(frame)
         return data
     def serialize(self):
         pass #@@@
