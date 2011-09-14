@@ -540,6 +540,22 @@ class LocalVariableAttributeInfo(AttributeInfo):
 class DeprecatedAttributeInfo(AttributeInfo):
     pass
 
+class StackMapTableAttributeInfo(AttributeInfo):
+    def init(self, data, class_file):
+        self.class_file = class_file
+        self.attribute_length = u4(data[0:4])
+        num_entries = u2(data[4:6])
+        self.entries = []
+        data = data[6:]
+        for i in range(0, num_entries):
+            stack_map_frame = StackMapFrame()
+            data = stack_map_frame(data)
+            self.entries.append(stack_map_frame)
+        return data
+    def serialize(self):
+        pass #@@@
+
+
 # Child classes of the attribute information classes.
 
 class ExceptionInfo:
@@ -611,6 +627,9 @@ class ClassFile:
         """
 
         self.attribute_class_to_index = None
+        magic = u4(s[0:])
+        if magic != 0xCAFEBABE:
+            raise UnknownAttribute, magic
         self.minorv,self.majorv = u2(s[4:]),u2(s[6:])
         self.constants, s = self._get_constants(s[8:])
         self.access_flags, s = self._get_access_flags(s)
@@ -743,6 +762,26 @@ class ClassFile:
             attribute = LocalVariableAttributeInfo()
         elif constant_name == "Deprecated":
             attribute = DeprecatedAttributeInfo()
+        elif constant_name == "StackMapTable":  # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
+            attribute = StackMapTableAttributeInfo()
+        elif constant_name == "EnclosingMethod":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.7
+        elif constant_name == "Signature":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.9
+        elif constant_name == "SourceDebugExtension":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
+        elif constant_name == "LocalVariableTypeTable":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
+        elif constant_name == "RuntimeVisibleAnnotations":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
+        elif constant_name == "RuntimeInvisibleAnnotations":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.17
+        elif constant_name == "RuntimeVisibleParameterAnnotations":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.18
+        elif constant_name == "RuntimeInvisibleParameterAnnotations":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
+        elif constant_name == "AnnotationDefault":
+            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
         else:
             raise UnknownAttribute, constant_name
         s = attribute.init(s[2:], self)
