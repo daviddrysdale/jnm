@@ -1,0 +1,116 @@
+.Selected {
+background-color: silver;
+color: black;
+font-family: sans-serif;
+}
+
+.Selected A:link { color: black; }
+.Selected A:visited { color: black; }
+.Selected A:active { color: black; }
+
+.Unselected {
+background-color: gray;
+color: black;
+font-family: sans-serif;
+}
+
+.Unselected A:link { color: black; }
+.Unselected A:visited { color: black; }
+.Unselected A:active { color: black; }
+
+.Main { vertical-align: top; }
+
+BODY {
+background-color: white;
+font-size: 12pt;
+}
+
+H1 {
+color: navy;
+font-family: sans-serif;
+font-size: 20pt;
+}
+
+H2 {
+color: navy;
+font-family: sans-serif;
+font-size: 18pt;
+}
+
+H3 {
+color: navy;
+font-family: sans-serif;
+font-size: 16pt;
+}
+
+H4 {
+color: navy;
+font-family: sans-serif;
+font-size: 15pt;
+}
+
+H5 {
+color: navy;
+font-family: sans-serif;
+font-size: 14pt;
+}
+
+UL {
+list-style-type: disc;
+}
+
+.MainHeading {
+color: black;
+background-color: gray;
+font-family: sans-serif;
+font-size: 14pt;
+font-weight: bold;
+vertical-align: top;
+}
+
+.SubHeading {
+color: black;
+background-color: silver;
+font-family: sans-serif;
+font-size: 14pt;
+font-weight: bold;
+vertical-align: top;
+}
+
+.CellHeading {
+color: black;
+background-color: silver;
+font-family: sans-serif;
+font-size: 12pt;
+font-weight: bold;
+vertical-align: top;
+}
+
+.CellContent {
+font-size: 12pt;
+vertical-align: top;
+}
+
+PRE.Python {
+background-color: #e0e0e0;
+width: 100%;
+}
+
+.Submodule {
+color: #ff0000
+}
+
+PRE.Prompt {
+background-color: #c0c0c0;
+width: 100%;
+}
+
+PRE.PromptRequest {
+background-color: #b0d0b0;
+width: 100%;
+}
+
+PRE.PromptResponse {
+background-color: #d0b0b0;
+width: 100%;
+}

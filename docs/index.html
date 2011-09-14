@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>javaclass/ClassFile</title>
+  <meta name="generator" content="amaya 8.1a, see http://www.w3.org/Amaya/" />
+  <link xmlns:xlink="http://www.w3.org/1999/xlink" href="styles.css"
+  rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+<h1>javaclass</h1>
+
+<p>The javaclass collection of packages and utilities (also known as
+ClassFile) provides a means of importing Java classes and packages directly
+into Python, without the need for a Java virtual machine, so that the classes
+may be instantiated, accessed, run and manipulated just like Python classes,
+and that the resulting objects and methods can be accessed and manipulated
+just like Python objects and methods. It should be possible to run compiled
+Java programs with the Python interpreter and not notice that it isn't the
+Java virtual machine being used - given sufficient library support for the
+program concerned, of course.</p>
+
+<h2>Quick Examples</h2>
+
+<p>It can be quicker to see what this is about by seeing some examples.</p>
+
+<h3>The Not Very Convincing Example</h3>
+
+<p>You can run Java classes by finding one with a main method and executing
+it. Here's a comparison of a freshly prepared Java class being run in Python
+and in a Java virtual machine respectively:</p>
+<pre class="Prompt">cd tests/</pre>
+<pre class="Prompt">javac Value.java</pre>
+<pre class="PromptRequest">runclass.py Value</pre>
+<pre class="PromptResponse">v.getValue() correct: 123
+v.getValue() correct: 456
+v.isPositive() correct: 1
+v.isPositive() correct: 0
+v.compare(-790) correct: -1
+v.compare(-788) correct: 1
+v.compare(-789) correct: 0
+v.getValue() == v2.getValue() correct: 0
+v2.add(-123) correct: 0
+v2.getValue() correct: 255</pre>
+<pre class="PromptRequest">java Value</pre>
+<pre class="PromptResponse">v.getValue() correct: 123
+v.getValue() correct: 456
+v.isPositive() correct: true
+v.isPositive() correct: false
+v.compare(-790) correct: -1
+v.compare(-788) correct: 1
+v.compare(-789) correct: 0
+v.getValue() == v2.getValue() correct: false
+v2.add(-123) correct: 0
+v2.getValue() correct: 255</pre>
+
+<h3>The Slightly More Credible Example</h3>
+
+<p>It can be more interesting to get into Python's interactive mode and then
+start playing around with Java classes:</p>
+<pre class="PromptResponse">Python 2.2.2 (#2, Jan 21 2005, 16:16:57)
+[GCC 2.96 20000731 (Red Hat Linux 7.3 2.96-112)] on linux2
+Type "help", "copyright", "credits" or "license" for more information.</pre>
+<pre class="PythonPrompt">import javaclass.classhook</pre>
+<pre class="PythonPrompt">from __this__ import Value</pre>
+<pre class="PythonPrompt">dir()</pre>
+<pre class="PromptResponse">['Value', '__builtins__', '__doc__', '__name__',
+'javaclass']</pre>
+<pre class="PythonPrompt">dir(Value)</pre>
+<pre class="PromptResponse">['__class__', '__delattr__', '__dict__', '__doc__',
+'__getattribute__', '__hash__', '__init__', '__init______I_', '__module__',
+'__new__', '__reduce__', '__repr__', '__setattr__', '__str__', '__weakref__',
+'add', 'add____I_', 'compare', 'compare____I_', 'getClass', 'getClass___',
+'getValue', 'getValue___', 'isPositive', 'isPositive___', 'main',
+'main___java__lang__String_array_', 'newValue', 'newValue___', 'setValue',
+'setValue____I_']</pre>
+<pre class="PythonPrompt">v = Value(20050121)</pre>
+<pre class="PythonPrompt">v.getValue()</pre>
+<pre class="PromptResponse">20050121</pre>
+<pre class="PythonPrompt">v.setValue(20050401)</pre>
+<pre class="PythonPrompt">v.getValue()</pre>
+<pre class="PromptResponse">20050401</pre>
+
+<h2>Copyright and Licence</h2>
+
+<p>The javaclass software is distributed under the terms of the GNU Lesser
+General Public Licence (LGPL). See the file <code>COPYING.txt</code> in the
+<code>docs</code> directory within the source code distribution.</p>
+
+<h2>Getting Started</h2>
+
+<p>See the <code>README.txt</code> file in the distribution directory.</p>
+
+<h2>Motivation</h2>
+
+<p>Pick one of the following:</p>
+<ul>
+  <li>The need/desire to access Java libraries from Python without firing up
+    Java virtual machines or switching to Jython (and thereby losing
+    convenient access to various CPython libraries).</li>
+  <li>Mixing languages available for the Java runtime with Python.</li>
+  <li>Static typing for the Python environment, albeit achieved by writing
+    Java or other appropriate languages.</li>
+  <li>Having an open source environment from top to bottom to run Java
+    bytecode on.</li>
+  <li>Experimentation around import hooks, bytecode generation; observation
+    of different runtime and type systems interacting.</li>
+  <li>Making Python libraries available to Java programs - Tkinter for Java,
+    anyone?!</li>
+</ul>
+
+<h2>Limitations</h2>
+
+<p>It isn't all great, however. Here are some reasons why this might not do
+what you want it to:</p>
+<ul>
+  <li>It runs on the Python runtime which does not have the security,
+    threading and just-in-time compiler features that people enjoy about Java
+    runtimes, so if what you like to do is to run one big servlet container
+    with lots of classes and threads from different people floating around,
+    this isn't going to protect them from doing all sorts of things to each
+    other and to your system. However, you may take the unfashionable view
+    that the operating system is supposed to do that kind of thing.</li>
+  <li>It works by generating Python bytecode from the Java bytecode in class
+    files (and .jar archives). Generally, anyone who is anyone in the Python
+    pantheon has largely recommended against doing anything with the
+    bytecode, despite noble efforts to make exciting things happen by
+    transforming it, optimising it, and so on. (Instead, there's been more
+    emphasis on lots of runtime baggage for things which could be done by
+    analysis of the code with modified bytecode being produced as a result,
+    and let's not get started on some of the syntax enhancements!)
+    Consequently, stability might be an issue for some configurations,
+    especially since CPython doesn't fail particularly graciously with badly
+    behaved bytecode.</li>
+  <li>Some of the translation from Java to Python bytecode takes a few
+    liberties. For example, Java exceptions are handled in ways reminiscent
+    of a 1980s microcomputer assembly language, whereas Python bytecode has
+    higher level constructs for exceptions; this translation can probably be
+    done incorrectly, triggering some kind of bytecode misbehaviour, and we
+    all know what happens then.</li>
+  <li>At the Python level, not all things seem totally right. For example,
+    Java bytecode instructions are used to instantiate and then initialise
+    exceptions just like other objects, and while Python can support this
+    with new-style objects, Python won't let you use new-style objects as
+    exceptions. Consequently, when Java exceptions appear in Python programs,
+    they will be wrapped in old-style exceptions and have to be handled
+    specially.</li>
+  <li>In order to support method dispatch properly, special names are used
+    for the translated methods which include the type information found in
+    the bytecode; things like <code>main___java__lang__String_array_</code>
+    and <code>setValue____I_</code> appear when you look inside classes and
+    objects. When implementing libraries in Python for Java programs, such
+    method naming conventions have to be used because the original code is
+    very specific about which method is being invoked, and for specialised
+    versions of <code>__init__</code> it becomes necessary to do a
+    <code>setattr</code> to add such methods into classes because of various
+    "name mangling" measures in the Python compilation process. Now, many
+    people might start advocating decorators at this point, but not everyone
+    is running the very latest stuff from python.org, and decorators won't
+    help you target a specific specialised method anyway.</li>
+  <li>Special dispatcher methods are often generated for the benefit of
+    Python access to Java classes, even though such methods are not strictly
+    necessary for the Java classes to work amongst themselves. Such methods
+    are only generated when many methods of the same name reside in a given
+    class, since where Java distinguishes between them on the basis of the
+    signatures, Python permits only one method of a given name and needs
+    additional logic to dispatch to the actual method implementations on the
+    basis of the types of the incoming values. The implementation of the
+    dispatcher method is naive and does not try to order the type checks and
+    dispatches according to the specificity of the parameter types; thus, a
+    more reliable but more verbose way of ensuring that the correct method in
+    such cases is called from a Python program may be to use the special long
+    method name (eg. <code>setValue____I_</code>).</li>
+  <li>Imported and translated bytecode is not written out or cached. This
+    means that a fair amount of work happens every time you need to import
+    Java classes, although the generation of .pyc files could be introduced
+    provided that it captured the slightly different import semantics of
+    Java; for example, you can import classes belonging to a package from
+    several places on the PYTHONPATH, and this is something that generally
+    isn't allowed/supported with the classic Python module import
+  mechanisms.</li>
+  <li>Most Java programs need standard Java library (also known as the Java
+    API) classes; indeed, with <code>java.lang.String</code> and seemingly
+    <code>java.lang.StringBuffer</code> required just for the usage of
+    strings, and with the classic <code>main</code> method having
+    <code>String[]</code> in its signature, some kind of library
+    implementation is obviously necessary. Whilst importing everything from
+    the .jar files bundled with Sun's JRE might be tempting, there may be a
+    certain amount of native calling going on in secret which would defeat
+    this approach, and anyone seriously interested in running Java code in
+    Python should really want to steer clear of such proprietary dependencies
+    anyway. It could be possible to wrap and make use of GNU Classpath or
+    some other open source Java API implementation, but the cleanest (but not
+    necessarily the least time-consuming) approach is surely to implement the
+    standard API classes in Python, and a package called <code>java</code> is
+    included which contains some fairly quick and dirty implementations to
+    get things working.</li>
+</ul>
+
+<h2>Suggestions for Python Improvements</h2>
+<ul>
+  <li>Make the bytecode interpreter more robust when encountering badly
+    behaved bytecode, consider bytecode verification and other exciting
+    features.</li>
+  <li>Allow new-style objects as exceptions. Actually, just do something
+    about the whole old-style vs. new-style class thing!</li>
+  <li>Allow possible optimisation for things like statically predetermined
+    method calls. The debate about static typing intersects slightly with the
+    need to define methods with parameters of particular types, but
+    supporting Java-style method "coexistence" (or multimethods, or whatever
+    the proper name is) would presumably involve doing lots of things to the
+    language that were once thought to be highly un-Pythonic. Besides, the
+    need to interoperate with statically typed languages shouldn't dictate
+    the design of Python, especially if better type systems could be adopted
+    instead, leaving the static typing glue for strictly special
+  occasions.</li>
+  <li>Not that threaded Java programs have been run on Python yet, but with
+    Python's current threading architecture I'd expect some
+  disappointment.</li>
+</ul>
+</body>
+</html>

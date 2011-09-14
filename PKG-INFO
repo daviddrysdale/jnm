@@ -1,0 +1,19 @@
+Metadata-Version: 1.1
+Name: javaclass
+Version: 0.2
+Author: Paul Boddie
+Author-email: paul at boddie org uk
+Maintainer: Paul Boddie
+Maintainer-email: paul at boddie org uk
+Home-page: http://www.boddie.org.uk/python/javaclass.html
+Download-url: http://www.boddie.org.uk/python/downloads/javaclass-0.2.tar.gz
+Summary: Import Java classes and packages into Python
+License: LGPL (version 3 or later)
+Description: The javaclass collection of packages and utilities provides a means of importing
+        Java classes and packages directly into Python, without the need for a Java
+        virtual machine, so that the classes may be instantiated, accessed, run and
+        manipulated just like Python classes, and that the resulting objects and methods
+        can be accessed and manipulated just like Python objects and methods.
+Keywords: Java
+Platform: Any
+Classifier: Development Status :: 3 - Alpha
