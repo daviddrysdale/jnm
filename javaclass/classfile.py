@@ -538,9 +538,27 @@ class LocalVariableAttributeInfo(AttributeInfo):
             od += lv.serialize()
         return od
 
+class LocalVariableTypeAttributeInfo(AttributeInfo):
+    def init(self, data, class_file):
+        self.class_file = class_file
+        self.attribute_length = u4(data[0:4])
+        local_variable_type_table_length = u2(data[4:6])
+        data = data[6:]
+        self.local_variable_type_table = []
+        for i in range(0, local_variable_type_table_length):
+            local_variable = LocalVariableInfo()
+            data = local_variable.init(data, self.class_file)
+            self.local_variable_type_table.append(local_variable)
+        return data
+
+    def serialize(self):
+        od = su4(self.attribute_length)+su2(len(self.local_variable_type_table))
+        for lv in self.local_variable_type_table:
+            od += lv.serialize()
+        return od
+
 class DeprecatedAttributeInfo(AttributeInfo):
     pass
-
 
 class VerificationTypeInfo(object):
     def __init__(self, tag):
@@ -1143,8 +1161,8 @@ class ClassFile:
             # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
             attribute = SourceDebugExtensionAttributeInfo()
         elif constant_name == "LocalVariableTypeTable":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
-            raise NotImplementedError
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
+            attribute = LocalVariableTypeAttributeInfo()
         elif constant_name == "RuntimeVisibleAnnotations":  
             # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
             attribute = RuntimeVisibleAnnotationsAttributeInfo()
