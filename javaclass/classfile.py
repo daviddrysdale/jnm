@@ -1282,7 +1282,10 @@ class ClassFile:
 if __name__ == "__main__":
     import sys
     f = open(sys.argv[1], "rb")
-    c = ClassFile(f.read())
+    in_data = f.read()
+    c = ClassFile(in_data)
     f.close()
+    out_data = c.serialize()
+    assert(in_data == out_data)
 
 # vim: tabstop=4 expandtab shiftwidth=4
