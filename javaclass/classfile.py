@@ -830,7 +830,7 @@ class RuntimeParameterAnnotationsAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
-        num_parameters = u2(data[4:5])
+        num_parameters = u1(data[4:5])
         data = data[5:]
         self.parameter_annotations = []
         for ii in xrange(num_parameters):
