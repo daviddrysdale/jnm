@@ -770,7 +770,7 @@ class SignatureAttributeInfo(AttributeInfo):
         self.signature_index = u2(data[4:6])
         return data[6:]
     def serialize(self):
-        return su4(self.attribute_length)+su4(self.attribute_length)+su2(self.signature_index)
+        return su4(self.attribute_length)+su2(self.signature_index)
 
 
 class SourceDebugExtensionAttributeInfo(AttributeInfo):
@@ -1215,7 +1215,7 @@ class ClassFile:
         return interfaces, s
 
     def _serialize_interfaces(self):
-        return su2(len(self.interfaces))+"".join([su2(self.interfaces.index(interf)+1) for interf in self.interfaces])
+        return su2(len(self.interfaces))+"".join([su2(self.constants.index(interf)+1) for interf in self.interfaces])
 
     def _get_fields(self, s):
         number = u2(s[0:2])
