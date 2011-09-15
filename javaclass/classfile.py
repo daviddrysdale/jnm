@@ -914,6 +914,16 @@ class RuntimeVisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotation
 class RuntimeInvisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
     pass
 
+class AnnotationDefaultAttributeInfo(AttributeInfo):
+    def init(self, data):
+        self.class_file = class_file
+        self.attribute_length = u4(data[0:4])
+        self.default_value = create_element_value(data)
+        return self.default_value.init(data)
+    def serialize(self):
+        return su4(self.attribute_length)+self.default_value.serialize()
+
+
 # Child classes of the attribute information classes.
 
 class ExceptionInfo:
@@ -1149,7 +1159,7 @@ class ClassFile:
             attribute = RuntimeInvisibleParameterAnnotationsAttributeInfo()
         elif constant_name == "AnnotationDefault":
             # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
-            raise NotImplementedError
+            attribute = AnnotationDefaultAttributeInfo()
         else:
             raise UnknownAttribute, constant_name
         s = attribute.init(s[2:], self)
