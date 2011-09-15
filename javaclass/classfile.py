@@ -715,7 +715,7 @@ class FullFrame(StackMapFrame):
             od += l.serialize()
         od += su2(len(self.stack))
         for s in self.stack:
-            s += s.serialize()
+            od += s.serialize()
         return od
 
 FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
@@ -806,21 +806,21 @@ class EnumConstValue(ElementValue):
         self.const_name_index = u2(data[2:4])
         return data[4:]
     def serialize(self):
-        return super(ConstValue, self).serialize()+su2(self.type_name_index)+su2(self.const_name_index)
+        return super(EnumConstValue, self).serialize()+su2(self.type_name_index)+su2(self.const_name_index)
 class ClassInfoValue(ElementValue):
     def init(self, data):
         data = super(ClassInfoValue, self).init(data)
         self.class_info_index = u2(data[0:2])
         return data[2:]
     def serialize(self):
-        return super(ConstValue, self).serialize()+su2(self.class_info_index)
+        return super(ClassInfoValue, self).serialize()+su2(self.class_info_index)
 class AnnotationValue(ElementValue):
     def init(self, data):
         data = super(AnnotationValue, self).init(data)
         self.annotation_value = Annotation()
         return self.annotation_value.init(data)
     def serialize(self):
-        return super(ConstValue, self).serialize()+self.annotation_value.serialize()
+        return super(AnnotationValue, self).serialize()+self.annotation_value.serialize()
 class ArrayValue(ElementValue):
     def init(self, data):
         data = super(ArrayValue, self).init(data)
@@ -833,7 +833,7 @@ class ArrayValue(ElementValue):
             self.values.append(element_value)
         return data
     def serialize(self):
-        od = super(ConstValue, self).serialize()+su2(len(self.values))
+        od = super(ArrayValue, self).serialize()+su2(len(self.values))
         for v in self.values:
             od += v.serialize()
         return od
