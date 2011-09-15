@@ -551,39 +551,18 @@ class VerificationTypeInfo(object):
         return data[1:]
 class TopVariableInfo(VerificationTypeInfo):
     TAG = 0
-    def init(self, data):
-        data = super(TopVariableInfo, self).init(data)
-        return data
 class IntegerVariableInfo(VerificationTypeInfo):
     TAG = 1
-    def init(self, data):
-        data = super(IntegerVariableInfo, self).init(data)
-        return data
 class FloatVariableInfo(VerificationTypeInfo):
     TAG = 2
-    def init(self, data):
-        data = super(FloatVariableInfo, self).init(data)
-        return data
 class DoubleVariableInfo(VerificationTypeInfo):
     TAG = 3
-    def init(self, data):
-        data = super(DoubleVariableInfo, self).init(data)
-        return data
 class LongVariableInfo(VerificationTypeInfo):
     TAG = 4
-    def init(self, data):
-        data = super(LongVariableInfo, self).init(data)
-        return data
 class NullVariableInfo(VerificationTypeInfo):
     TAG = 5
-    def init(self, data):
-        data = super(NullVariableInfo, self).init(data)
-        return data
 class UninitializedThisVariableInfo(VerificationTypeInfo):
     TAG = 6
-    def init(self, data):
-        data = super(UninitializedThisVariableInfo, self).init(data)
-        return data
 class ObjectVariableInfo(VerificationTypeInfo):
     TAG = 7
     def init(self, data):
@@ -624,9 +603,6 @@ class StackMapFrame(object):
 class SameFrame(StackMapFrame):
     TYPE_LOWER = 0
     TYPE_UPPER = 63
-    def init(self, data):
-        data = super(SameFrame, self).init(data)
-        return data
 class SameLocals1StackItemFrame(StackMapFrame):
     TYPE_LOWER = 64
     TYPE_UPPER = 127
