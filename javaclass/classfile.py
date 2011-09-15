@@ -542,45 +542,58 @@ class DeprecatedAttributeInfo(AttributeInfo):
     pass
 
 
-class VerificationTypeInfo:
+class VerificationTypeInfo(object):
     def __init__(self, tag):
         self.tag = tag
+    def init(self, data):
+        tag = u1(data[0:1])
+        assert(tag == self.tag)
+        return data[1:]
 class TopVariableInfo(VerificationTypeInfo):
     TAG = 0
     def init(self, data):
+        data = super(TopVariableInfo, self).init(data)
         return data
 class IntegerVariableInfo(VerificationTypeInfo):
     TAG = 1
     def init(self, data):
+        data = super(IntegerVariableInfo, self).init(data)
         return data
 class FloatVariableInfo(VerificationTypeInfo):
     TAG = 2
     def init(self, data):
+        data = super(FloatVariableInfo, self).init(data)
         return data
 class DoubleVariableInfo(VerificationTypeInfo):
     TAG = 3
     def init(self, data):
+        data = super(DoubleVariableInfo, self).init(data)
         return data
 class LongVariableInfo(VerificationTypeInfo):
     TAG = 4
     def init(self, data):
+        data = super(LongVariableInfo, self).init(data)
         return data
 class NullVariableInfo(VerificationTypeInfo):
     TAG = 5
     def init(self, data):
+        data = super(NullVariableInfo, self).init(data)
         return data
 class UninitializedThisVariableInfo(VerificationTypeInfo):
     TAG = 6
     def init(self, data):
+        data = super(UninitializedThisVariableInfo, self).init(data)
         return data
 class ObjectVariableInfo(VerificationTypeInfo):
     TAG = 7
     def init(self, data):
+        data = super(ObjectVariableInfo, self).init(data)
         self.cpool_index = u2(data)
         return data[2:]
 class UninitializedVariableInfo(VerificationTypeInfo):
     TAG = 8
     def init(self, data):
+        data = super(UninitializedVariableInfo, self).init(data)
         self.offset = u2(data)
         return data[2:]
 VARIABLE_INFO_CLASSES = (TopVariableInfo, IntegerVariableInfo, FloatVariableInfo, DoubleVariableInfo,
@@ -593,6 +606,7 @@ class UnknownVariableInfo:
     pass
 
 def create_verification_type_info(data):
+    # Does not consume data, just does lookahead
     tag = u1(data[0:1])
     if tag in VARIABLE_INFO_TAG_MAP:
         return VARIABLE_INFO_TAG_MAP[tag](tag)
@@ -600,72 +614,83 @@ def create_verification_type_info(data):
         raise UnknownVariableInfo, tag
 
 
-class StackMapFrame:
+class StackMapFrame(object):
     def __init__(self, frame_type):
         self.frame_type = frame_type
+    def init(self, data):
+        frame_type = u1(data[0:1])
+        assert(frame_type == self.frame_type)
+        return data[1:]
 class SameFrame(StackMapFrame):
     TYPE_LOWER = 0
     TYPE_UPPER = 63
     def init(self, data):
+        data = super(SameFrame, self).init(data)
         return data
 class SameLocals1StackItemFrame(StackMapFrame):
     TYPE_LOWER = 64
     TYPE_UPPER = 127
     def init(self, data):
+        data = super(SameLocals1StackItemFrame, self).init(data)
         self.offset_delta = self.frame_type - 64
-        self.stack = [create_verification_type_info(data[0:1])]
-        return self.stack[0].init(data[1:])
+        self.stack = [create_verification_type_info(data)]
+        return self.stack[0].init(data)
 class SameLocals1StackItemFrameExtended(StackMapFrame):
     TYPE_LOWER = 247
     TYPE_UPPER = 247
     def init(self, data):
+        data = super(SameLocals1StackItemFrameExtended, self).init(data)
         self.offset_delta = u2(data[0:2])
         data = data[2:]
-        self.stack = [create_verification_type_info(data[0:1])]
-        return self.stack[0].init(data[1:])
+        self.stack = [create_verification_type_info(data)]
+        return self.stack[0].init(data)
 class ChopFrame(StackMapFrame):
     TYPE_LOWER = 248
     TYPE_UPPER = 250
     def init(self, data):
+        data = super(ChopFrame, self).init(data)
         self.offset_delta = u2(data[0:2])
         return data[2:]
 class SameFrameExtended(StackMapFrame):
     TYPE_LOWER = 251
     TYPE_UPPER = 251
     def init(self, data):
+        data = super(SameFrameExtended, self).init(data)
         self.offset_delta = u2(data[0:2])
         return data[2:]
 class AppendFrame(StackMapFrame):
     TYPE_LOWER = 252
     TYPE_UPPER = 254
     def init(self, data):
+        data = super(AppendFrame, self).init(data)
         self.offset_delta = u2(data[0:2])
         data = data[2:]
         num_locals = self.frame_type - 251
         self.locals = []
         for ii in xrange(num_locals):
-            info = create_verification_type_info(data[0:1])
-            data = info.init(data[1:])
+            info = create_verification_type_info(data)
+            data = info.init(data)
             self.locals.append(info)
         return data
 class FullFrame(StackMapFrame):
     TYPE_LOWER = 255
     TYPE_UPPER = 255
     def init(self, data):
+        data = super(FullFrame, self).init(data)
         self.offset_delta = u2(data[0:2])
         num_locals = u2(data[2:4])
         data = data[4:]
         self.locals = []
         for ii in xrange(num_locals):
-            info = create_verification_type_info(data[0:1])
-            data = info.init(data[1:])
+            info = create_verification_type_info(data)
+            data = info.init(data)
             self.locals.append(info)
         num_stack_items = u2(data[0:2])
         data = data[2:]
         self.stack = []
         for ii in xrange(num_stack_items):
-            stack_item = create_verification_type_info(data[0:1])
-            data = stack_item.init(data[1:])
+            stack_item = create_verification_type_info(data)
+            data = stack_item.init(data)
             self.locals.append(stack_item)
         return data
 FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
@@ -691,8 +716,8 @@ class StackMapTableAttributeInfo(AttributeInfo):
         self.entries = []
         data = data[6:]
         for i in range(0, num_entries):
-            frame = create_stack_frame(data[0:1])
-            data = frame.init(data[1:])
+            frame = create_stack_frame(data)
+            data = frame.init(data)
             self.entries.append(frame)
         return data
     def serialize(self):
@@ -729,6 +754,127 @@ class SourceDebugExtensionAttributeInfo(AttributeInfo):
     def serialize(self):
         pass #@@@
 
+
+class ElementValue(object):
+    def __init__(self, tag):
+        self.tag = tag
+    def init(self, data):
+        tag = chr(u1(data[0:1]))
+        assert(tag == self.tag)
+        return data[1:]
+class ConstValue(ElementValue):
+    def init(self, data):
+        data = super(ConstValue, self).init(data)
+        self.const_value_index = u2(data[0:2])
+        return data[2:]
+class EnumConstValue(ElementValue):
+    def init(self, data):
+        data = super(EnumConstValue, self).init(data)
+        self.type_name_index = u2(data[0:2])
+        self.const_name_index = u2(data[2:4])
+        return data[4:]
+class ClassInfoValue(ElementValue):
+    def init(self, data):
+        data = super(ClassInfoValue, self).init(data)
+        self.class_info_index = u2(data[0:2])
+        return data[2:]
+class AnnotationValue(ElementValue):
+    def init(self, data):
+        data = super(AnnotationValue, self).init(data)
+        self.annotation_value = Annotation()
+        return self.annotation_value.init(data)
+class ArrayValue(ElementValue):
+    def init(self, data):
+        data = super(ArrayValue, self).init(data)
+        num_values = u2(data[0:2])
+        data = data[2:]
+        self.values = []
+        for ii in xrange(num_values):
+            element_value = create_element_value(data)
+            data = element_value.init(data)
+            self.values.append(element_value)
+        return data
+# Exception
+class UnknownElementValue:
+    pass
+
+def create_element_value(data):
+    tag = chr(u1(data[0:1]))
+    if tag in ('B', 'C', 'D', 'F', 'I', 'J', 'S', 'Z', 's'):
+        return ConstValue(tag)
+    elif tag == 'e':
+        return EnumConstValue(tag)
+    elif tag == 'c':
+        return ClassInfoValue(tag)
+    elif tag == '@':
+        return AnnotationValue(tag)
+    elif tag == '[':
+        return ArrayValue(tag)
+    else:
+        raise UnknownElementValue, tag
+    
+
+class Annotation:
+    def init(self, data):
+        self.type_index = u2(data[0:2])
+        num_element_value_pairs = u2(data[2:4])
+        data = data[4:]
+        self.element_value_pairs = []
+        for ii in xrange(num_element_value_pairs):
+            element_name_index = u2(data[0:2])
+            data = data[2:]
+            element_value = create_element_value(data)
+            data = element_value.init(data)
+            self.element_value_pairs.append((element_name_index, element_value))
+        return data
+
+
+class RuntimeAnnotationsAttributeInfo(AttributeInfo):
+    def init(self, data, class_file):
+        self.class_file = class_file
+        self.attribute_length = u4(data[0:4])
+        num_annotations = u2(data[4:6])
+        data = data[6:]
+        self.annotations = []
+        for ii in xrange(num_annotations):
+            annotation = Annotation() 
+            data = annotation.init(data)
+            self.annotations.append(annotation)
+        return data
+    def serialize(self):
+        pass #@@@
+
+class RuntimeVisibleAnnotationsAttributeInfo(RuntimeAnnotationsAttributeInfo):
+    pass
+
+class RuntimeInvisibleAnnotationsAttributeInfo(RuntimeAnnotationsAttributeInfo):
+    pass
+
+class RuntimeParameterAnnotationsAttributeInfo(AttributeInfo):
+    def init(self, data, class_file):
+        self.class_file = class_file
+        self.attribute_length = u4(data[0:4])
+        num_parameters = u2(data[4:5])
+        data = data[5:]
+        self.parameter_annotations = []
+        for ii in xrange(num_parameters):
+            num_annotations = u2(data[0:2])
+            data = data[2:]
+            annotations = []
+            for jj in xrange(num_annotations):
+                annotation = Annotation() 
+                data = annotation.init(data)
+                annotations.append(annotation)
+            self.parameter_annotations.append(annotations)
+        return data
+    def serialize(self):
+        pass #@@@
+        
+class RuntimeVisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
+    pass
+
+class RuntimeInvisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
+    pass
 
 # Child classes of the attribute information classes.
 
@@ -936,31 +1082,35 @@ class ClassFile:
             attribute = LocalVariableAttributeInfo()
         elif constant_name == "Deprecated":
             attribute = DeprecatedAttributeInfo()
-        elif constant_name == "StackMapTable":  # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
+        elif constant_name == "StackMapTable":  
+            # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
             attribute = StackMapTableAttributeInfo()
-        elif constant_name == "EnclosingMethod":  # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.7
+        elif constant_name == "EnclosingMethod": 
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.7
             attribute = EnclosingMethodAttributeInfo()
-        elif constant_name == "Signature":  # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.9
+        elif constant_name == "Signature": 
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.9
             attribute = SignatureAttributeInfo()
-        elif constant_name == "SourceDebugExtension":  # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
+        elif constant_name == "SourceDebugExtension":  
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
             attribute = SourceDebugExtensionAttributeInfo()
         elif constant_name == "LocalVariableTypeTable":
             attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
             raise NotImplementedError
-        elif constant_name == "RuntimeVisibleAnnotations":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
-            raise NotImplementedError
-        elif constant_name == "RuntimeInvisibleAnnotations":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.17
-            raise NotImplementedError
-        elif constant_name == "RuntimeVisibleParameterAnnotations":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.18
-            raise NotImplementedError
-        elif constant_name == "RuntimeInvisibleParameterAnnotations":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
-            raise NotImplementedError
+        elif constant_name == "RuntimeVisibleAnnotations":  
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
+            attribute = RuntimeVisibleAnnotationsAttributeInfo()
+        elif constant_name == "RuntimeInvisibleAnnotations": 
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.17
+            attribute = RuntimeInvisibleAnnotationsAttributeInfo()
+        elif constant_name == "RuntimeVisibleParameterAnnotations":  
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.18
+            attribute = RuntimeVisibleParameterAnnotationsAttributeInfo()
+        elif constant_name == "RuntimeInvisibleParameterAnnotations":  
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
+            attribute = RuntimeInvisibleParameterAnnotationsAttributeInfo()
         elif constant_name == "AnnotationDefault":
-            attribute = None  # @@@@ Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
+            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
             raise NotImplementedError
         else:
             raise UnknownAttribute, constant_name
