@@ -667,7 +667,7 @@ class FullFrame(StackMapFrame):
         for ii in xrange(num_stack_items):
             stack_item = create_verification_type_info(data)
             data = stack_item.init(data)
-            self.locals.append(stack_item)
+            self.stack.append(stack_item)
         return data
 FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
                  ChopFrame, SameFrameExtended, AppendFrame, FullFrame)
