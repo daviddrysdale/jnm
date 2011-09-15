@@ -999,6 +999,36 @@ class UnknownTag(Exception):
 class UnknownAttribute(Exception):
     pass
 
+ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo, 
+                       "ConstantValue": ConstantValueAttributeInfo, 
+                       "Code": CodeAttributeInfo, 
+                       "Exceptions": ExceptionsAttributeInfo,
+                       "InnerClasses": InnerClassesAttributeInfo, 
+                       "Synthetic": SyntheticAttributeInfo,
+                       "LineNumberTable": LineNumberAttributeInfo, 
+                       "LocalVariableTable": LocalVariableAttributeInfo, 
+                       "Deprecated": DeprecatedAttributeInfo,
+                       # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
+                       "StackMapTable": StackMapTableAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.7
+                       "EnclosingMethod": EnclosingMethodAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.9
+                       "Signature": SignatureAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
+                       "SourceDebugExtension": SourceDebugExtensionAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
+                       "LocalVariableTypeTable": LocalVariableTypeAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
+                       "RuntimeVisibleAnnotations": RuntimeVisibleAnnotationsAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.17
+                       "RuntimeInvisibleAnnotations": RuntimeInvisibleAnnotationsAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.18
+                       "RuntimeVisibleParameterAnnotations": RuntimeVisibleParameterAnnotationsAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
+                       "RuntimeInvisibleParameterAnnotations": RuntimeInvisibleParameterAnnotationsAttributeInfo,
+                       # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
+                       "AnnotationDefault": AnnotationDefaultAttributeInfo,}
+                       
 # Abstractions for the main structures.
 
 class ClassFile:
@@ -1130,54 +1160,8 @@ class ClassFile:
     def _get_attribute_from_table(self, s):
         attribute_name_index = u2(s[0:2])
         constant_name = self.constants[attribute_name_index - 1].bytes
-        if constant_name == "SourceFile":
-            attribute = SourceFileAttributeInfo()
-        elif constant_name == "ConstantValue":
-            attribute = ConstantValueAttributeInfo()
-        elif constant_name == "Code":
-            attribute = CodeAttributeInfo()
-        elif constant_name == "Exceptions":
-            attribute = ExceptionsAttributeInfo()
-        elif constant_name == "InnerClasses":
-            attribute = InnerClassesAttributeInfo()
-        elif constant_name == "Synthetic":
-            attribute = SyntheticAttributeInfo()
-        elif constant_name == "LineNumberTable":
-            attribute = LineNumberAttributeInfo()
-        elif constant_name == "LocalVariableTable":
-            attribute = LocalVariableAttributeInfo()
-        elif constant_name == "Deprecated":
-            attribute = DeprecatedAttributeInfo()
-        elif constant_name == "StackMapTable":  
-            # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
-            attribute = StackMapTableAttributeInfo()
-        elif constant_name == "EnclosingMethod": 
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.7
-            attribute = EnclosingMethodAttributeInfo()
-        elif constant_name == "Signature": 
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.9
-            attribute = SignatureAttributeInfo()
-        elif constant_name == "SourceDebugExtension":  
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.11
-            attribute = SourceDebugExtensionAttributeInfo()
-        elif constant_name == "LocalVariableTypeTable":
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.14
-            attribute = LocalVariableTypeAttributeInfo()
-        elif constant_name == "RuntimeVisibleAnnotations":  
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.16
-            attribute = RuntimeVisibleAnnotationsAttributeInfo()
-        elif constant_name == "RuntimeInvisibleAnnotations": 
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.17
-            attribute = RuntimeInvisibleAnnotationsAttributeInfo()
-        elif constant_name == "RuntimeVisibleParameterAnnotations":  
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.18
-            attribute = RuntimeVisibleParameterAnnotationsAttributeInfo()
-        elif constant_name == "RuntimeInvisibleParameterAnnotations":  
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
-            attribute = RuntimeInvisibleParameterAnnotationsAttributeInfo()
-        elif constant_name == "AnnotationDefault":
-            # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
-            attribute = AnnotationDefaultAttributeInfo()
+        if constant_name in ATTR_NAMES_TO_CLASS:
+            attribute = ATTR_NAMES_TO_CLASS[constant_name]()
         else:
             raise UnknownAttribute, constant_name
         s = attribute.init(s[2:], self)
@@ -1251,16 +1235,11 @@ class ClassFile:
         if len(attrs) == 0: return od
         if self.attribute_class_to_index == None:
             self.attribute_class_to_index = {}
-            attr_names_to_class = {"SourceFile":SourceFileAttributeInfo, "ConstantValue":ConstantValueAttributeInfo, 
-                            "Code":CodeAttributeInfo, "Exceptions":ExceptionsAttributeInfo,
-                            "InnerClasses":InnerClassesAttributeInfo, "Synthetic":SyntheticAttributeInfo,
-                            "LineNumberTable":LineNumberAttributeInfo, "LocalVariableTable":LocalVariableAttributeInfo, 
-                            "Deprecated":DeprecatedAttributeInfo}
             index = 0
             for c in self.constants:
                 index += 1
-                if isinstance(c, Utf8Info) and str(c) in attr_names_to_class.keys():
-                    self.attribute_class_to_index[attr_names_to_class[str(c)]]=index
+                if isinstance(c, Utf8Info) and str(c) in ATTR_NAMES_TO_CLASS.keys():
+                    self.attribute_class_to_index[ATTR_NAMES_TO_CLASS[str(c)]]=index
         for attribute in attrs:
             for (classtype,name_index) in self.attribute_class_to_index.iteritems():
                 if isinstance(attribute, classtype):
