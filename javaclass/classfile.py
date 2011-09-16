@@ -451,8 +451,7 @@ class CodeAttributeInfo(AttributeInfo):
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.max_stack)+su2(self.max_locals)+su4(self.code_length)+self.code
         od += su2(self.exception_table_length)
-        for e in self.exception_table:
-            od += e.serialize()
+        od += "".join([e.serialize() for e in self.exception_table])
         od += self.class_file._serialize_attributes(self.attributes)
         return od
 
@@ -474,8 +473,7 @@ class ExceptionsAttributeInfo(AttributeInfo):
         
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.number_of_exceptions)
-        for ei in self.exception_index_table:
-            od += su2(ei)
+        od += "".join([su2(ei) for ei in self.exception_index_table])
         return od
 
 class InnerClassesAttributeInfo(AttributeInfo):
@@ -493,8 +491,7 @@ class InnerClassesAttributeInfo(AttributeInfo):
 
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.number_of_classes)
-        for c in self.classes:
-            od += c.serialize()
+        od += "".join([c.serialize() for c in self.classes])
         return od
 
 class SyntheticAttributeInfo(AttributeInfo):
@@ -515,8 +512,7 @@ class LineNumberAttributeInfo(AttributeInfo):
         
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.line_number_table_length)
-        for ln in self.line_number_table:
-            od += ln.serialize()
+        od += "".join([ln.serialize() for ln in self.line_number_table])
         return od
 
 class LocalVariableAttributeInfo(AttributeInfo):
@@ -534,8 +530,7 @@ class LocalVariableAttributeInfo(AttributeInfo):
 
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.local_variable_table_length)
-        for lv in self.local_variable_table:
-            od += lv.serialize()
+        od += "".join([lv.serialize() for lv in self.local_variable_table])
         return od
 
 class LocalVariableTypeAttributeInfo(AttributeInfo):
@@ -553,8 +548,7 @@ class LocalVariableTypeAttributeInfo(AttributeInfo):
 
     def serialize(self):
         od = su4(self.attribute_length)+su2(len(self.local_variable_type_table))
-        for lv in self.local_variable_type_table:
-            od += lv.serialize()
+        od += "".join([lv.serialize() for lv in self.local_variable_type_table])
         return od
 
 class DeprecatedAttributeInfo(AttributeInfo):
@@ -685,8 +679,7 @@ class AppendFrame(StackMapFrame):
         return data
     def serialize(self):
         od = super(AppendFrame, self).serialize()+su2(self.offset_delta)
-        for l in self.locals:
-            od += l.serialize()
+        od += "".join([l.serialize() for l in self.locals])
         return od
 class FullFrame(StackMapFrame):
     TYPE_LOWER = 255
@@ -711,11 +704,9 @@ class FullFrame(StackMapFrame):
         return data
     def serialize(self):
         od = super(FullFrame, self).serialize()+su2(self.offset_delta)+su2(len(self.locals))
-        for l in self.locals:
-            od += l.serialize()
+        od += "".join([l.serialize() for l in self.locals])
         od += su2(len(self.stack))
-        for s in self.stack:
-            od += s.serialize()
+        od += "".join([s.serialize() for s in self.stack])
         return od
 
 FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
@@ -747,8 +738,7 @@ class StackMapTableAttributeInfo(AttributeInfo):
         return data
     def serialize(self):
         od = su4(self.attribute_length)+su2(len(self.entries))
-        for e in self.entries:
-            od += e.serialize()
+        od += "".join([e.serialize() for e in self.entries])
         return od
 
 
@@ -834,8 +824,7 @@ class ArrayValue(ElementValue):
         return data
     def serialize(self):
         od = super(ArrayValue, self).serialize()+su2(len(self.values))
-        for v in self.values:
-            od += v.serialize()
+        od += "".join([v.serialize() for v in self.values])
         return od
 # Exception
 class UnknownElementValue:
@@ -872,8 +861,7 @@ class Annotation:
         return data
     def serialize(self):
         od = su2(self.type_index)+su2(len(self.element_value_pairs))
-        for evp in self.element_value_pairs:
-            od += su2(evp[0])+evp[1].serialize()
+        od += "".join([su2(evp[0])+evp[1].serialize() for evp in self.element_value_pairs])
         return od
 
 
@@ -891,8 +879,7 @@ class RuntimeAnnotationsAttributeInfo(AttributeInfo):
         return data
     def serialize(self):
         od = su4(self.attribute_length)+su2(len(self.annotations))
-        for a in self.annotations:
-            od += a.serialize()
+        od += "".join([a.serialize() for a in self.annotations])
         return od
 
 class RuntimeVisibleAnnotationsAttributeInfo(RuntimeAnnotationsAttributeInfo):
@@ -922,8 +909,7 @@ class RuntimeParameterAnnotationsAttributeInfo(AttributeInfo):
         od = su4(self.attribute_length)+su1(len(self.parameter_annotations))
         for pa in self.parameter_annotations:
             od += su2(len(pa))
-            for a in pa:
-                od += a.serialize()
+            od += "".join([a.serialize() for a in pa])
         return od
         
 class RuntimeVisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
