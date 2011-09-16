@@ -1079,10 +1079,10 @@ class ClassFile(object):
             od += su1(8)
         elif isinstance(c, FieldRefInfo):
             od += su1(9)
+        elif isinstance(c, InterfaceMethodRefInfo):  # check subclass first
+            od += su1(11)
         elif isinstance(c, MethodRefInfo):
             od += su1(10)
-        elif isinstance(c, InterfaceMethodRefInfo):
-            od += su1(11)
         elif isinstance(c, NameAndTypeInfo):
             od += su1(12)
         else:
