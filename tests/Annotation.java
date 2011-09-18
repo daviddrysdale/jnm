@@ -1,5 +1,5 @@
 
 public @interface Annotation {
-  int a();
+  int a() default 99;
   String b();
 }

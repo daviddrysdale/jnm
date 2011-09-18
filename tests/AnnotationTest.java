@@ -7,4 +7,8 @@ class AnnotationTest {
   private static int getx() {
     return 1;
   }
+  private static int addup(@Annotation(b="param") int x, 
+                           int y) {
+    return x+y;
+  }
 }
