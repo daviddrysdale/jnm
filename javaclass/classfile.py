@@ -398,7 +398,6 @@ class MethodInfo(ItemInfo, PythonMethodUtils):
 
 class AttributeInfo:
     def init(self, data, class_file):
-        self.class_file = class_file
         self.attribute_length = u4(data[0:4])
         self.info = data[4:4+self.attribute_length]
         return data[4+self.attribute_length:]
@@ -445,14 +444,15 @@ class CodeAttributeInfo(AttributeInfo):
         data = data[end_of_code + 2:]
         for i in range(0, self.exception_table_length):
             exception = ExceptionInfo()
-            data = exception.init(data, class_file)
+            data = exception.init(data)
             self.exception_table.append(exception)
         self.attributes, data = self.class_file._get_attributes(data)
         return data
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.max_stack)+su2(self.max_locals)+su4(self.code_length)+self.code
         od += su2(self.exception_table_length)
-        od += "".join([e.serialize() for e in self.exception_table])
+        for e in self.exception_table:
+            od += e.serialize()
         od += self.class_file._serialize_attributes(self.attributes)
         return od
 
@@ -474,7 +474,8 @@ class ExceptionsAttributeInfo(AttributeInfo):
         
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.number_of_exceptions)
-        od += "".join([su2(ei) for ei in self.exception_index_table])
+        for ei in self.exception_index_table:
+            od += su2(ei)
         return od
 
 class InnerClassesAttributeInfo(AttributeInfo):
@@ -492,7 +493,8 @@ class InnerClassesAttributeInfo(AttributeInfo):
 
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.number_of_classes)
-        od += "".join([c.serialize() for c in self.classes])
+        for c in self.classes:
+            od += c.serialize()
         return od
 
 class SyntheticAttributeInfo(AttributeInfo):
@@ -507,13 +509,14 @@ class LineNumberAttributeInfo(AttributeInfo):
         data = data[6:]
         for i in range(0, self.line_number_table_length):
             line_number = LineNumberInfo()
-            data = line_number.init(data, class_file)
+            data = line_number.init(data)
             self.line_number_table.append(line_number)
         return data
         
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.line_number_table_length)
-        od += "".join([ln.serialize() for ln in self.line_number_table])
+        for ln in self.line_number_table:
+            od += ln.serialize()
         return od
 
 class LocalVariableAttributeInfo(AttributeInfo):
@@ -531,7 +534,8 @@ class LocalVariableAttributeInfo(AttributeInfo):
 
     def serialize(self):
         od = su4(self.attribute_length)+su2(self.local_variable_table_length)
-        od += "".join([lv.serialize() for lv in self.local_variable_table])
+        for lv in self.local_variable_table:
+            od += lv.serialize()
         return od
 
 class LocalVariableTypeAttributeInfo(AttributeInfo):
@@ -945,9 +949,8 @@ class AnnotationDefaultAttributeInfo(AttributeInfo):
 
 # Child classes of the attribute information classes.
 
-class ExceptionInfo(object):
-    def init(self, data, class_file):
-        self.class_file = class_file
+class ExceptionInfo:
+    def init(self, data):
         self.start_pc = u2(data[0:2])
         self.end_pc = u2(data[2:4])
         self.handler_pc = u2(data[4:6])
@@ -969,8 +972,7 @@ class InnerClassInfo(NameUtils):
         return su2(self.inner_class_info_index)+su2(self.outer_class_info_index)+su2(self.name_index)+su2(self.inner_class_access_flags)
 
 class LineNumberInfo:
-    def init(self, data, class_file):
-        self.class_file = class_file
+    def init(self, data):
         self.start_pc = u2(data[0:2])
         self.line_number = u2(data[2:4])
         return data[4:]
