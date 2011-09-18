@@ -936,6 +936,7 @@ class AnnotationDefaultAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
+        data = data[4:]
         self.default_value = create_element_value(data)
         return self.default_value.init(data, class_file)
     def serialize(self):
