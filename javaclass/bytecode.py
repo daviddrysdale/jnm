@@ -23,7 +23,7 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import classfile
-from dis import cmp_op, opname # for access to Python bytecode values and operators
+from dis import cmp_op, opname  # for access to Python bytecode values and operators
 try:
     from dis import opmap
 except ImportError:
@@ -35,8 +35,8 @@ import new
 
 # Bytecode production classes.
 
-class BytecodeWriter:
 
+class BytecodeWriter:
     "A Python bytecode writer."
 
     def __init__(self):
@@ -230,7 +230,7 @@ class BytecodeWriter:
         self.loops.append(self.position)
         self.output.append(opmap["SETUP_LOOP"])
         self.position += 1
-        self._write_value(0) # To be filled in later
+        self._write_value(0)  # To be filled in later
 
     def end_loop(self):
         current_loop_start = self.loops.pop()
@@ -255,7 +255,7 @@ class BytecodeWriter:
         else:
             self.jump_if_false()
         # Record the following instruction, too.
-        if not self.jumps.has_key(name):
+        if name not in self.jumps:
             self.jumps[name] = []
         self.jumps[name].append((jump_instruction, self.position))
 
@@ -298,7 +298,7 @@ class BytecodeWriter:
         #print "-", self.position, target
         self.output.append(opmap["SETUP_EXCEPT"])
         self.position += 1
-        self._write_value(0) # To be filled in later
+        self._write_value(0)  # To be filled in later
 
     def setup_finally(self, target):
         self.blocks.append(self.position)
@@ -306,7 +306,7 @@ class BytecodeWriter:
         #print "-", self.position, target
         self.output.append(opmap["SETUP_FINALLY"])
         self.position += 1
-        self._write_value(0) # To be filled in later
+        self._write_value(0)  # To be filled in later
 
     def end_exception(self):
         current_exception_start = self.blocks.pop()
@@ -357,7 +357,7 @@ class BytecodeWriter:
 
     def load_const(self, value):
         self.output.append(opmap["LOAD_CONST"])
-        if not self.constants.has_key(value):
+        if value not in self.constants:
             self.constants[value] = len(self.constants.keys())
         self.position += 1
         self._write_value(self.constants[value])
@@ -365,7 +365,7 @@ class BytecodeWriter:
 
     def load_global(self, name):
         self.output.append(opmap["LOAD_GLOBAL"])
-        if not self.names.has_key(name):
+        if name not in self.names:
             self.names[name] = len(self.names.keys())
         self.position += 1
         self._write_value(self.names[name])
@@ -373,14 +373,14 @@ class BytecodeWriter:
 
     def load_attr(self, name):
         self.output.append(opmap["LOAD_ATTR"])
-        if not self.names.has_key(name):
+        if name not in self.names:
             self.names[name] = len(self.names.keys())
         self.position += 1
         self._write_value(self.names[name])
 
     def load_name(self, name):
         self.output.append(opmap["LOAD_NAME"])
-        if not self.names.has_key(name):
+        if name not in self.names:
             self.names[name] = len(self.names.keys())
         self.position += 1
         self._write_value(self.names[name])
@@ -395,7 +395,7 @@ class BytecodeWriter:
 
     def store_attr(self, name):
         self.output.append(opmap["STORE_ATTR"])
-        if not self.names.has_key(name):
+        if name not in self.names:
             self.names[name] = len(self.names.keys())
         self.position += 1
         self._write_value(self.names[name])
@@ -413,7 +413,7 @@ class BytecodeWriter:
         #print ">", self.blocks
         self.output.append(opmap["FOR_ITER"])
         self.position += 1
-        self._write_value(0) # To be filled in later
+        self._write_value(0)  # To be filled in later
         self.update_stack_depth(1)
 
     def break_loop(self):
@@ -430,22 +430,22 @@ class BytecodeWriter:
     def jump_if_false(self, offset=0):
         self.output.append(opmap["JUMP_IF_FALSE"])
         self.position += 1
-        self._write_value(offset) # May be filled in later
+        self._write_value(offset)  # May be filled in later
 
     def jump_if_true(self, offset=0):
         self.output.append(opmap["JUMP_IF_TRUE"])
         self.position += 1
-        self._write_value(offset) # May be filled in later
+        self._write_value(offset)  # May be filled in later
 
     def jump_forward(self, offset=0):
         self.output.append(opmap["JUMP_FORWARD"])
         self.position += 1
-        self._write_value(offset) # May be filled in later
+        self._write_value(offset)  # May be filled in later
 
     def jump_absolute(self, address=0):
         self.output.append(opmap["JUMP_ABSOLUTE"])
         self.position += 1
-        self._write_value(address) # May be filled in later
+        self._write_value(address)  # May be filled in later
 
     def build_tuple(self, count):
         self.output.append(opmap["BUILD_TUPLE"])
@@ -497,7 +497,7 @@ class BytecodeWriter:
         self.output.append(opmap["CALL_FUNCTION_VAR"])
         self.position += 1
         self._write_value(count)
-        self.update_stack_depth(-count-1)
+        self.update_stack_depth(-count - 1)
 
     def binary_subscr(self):
         self.output.append(opmap["BINARY_SUBSCR"])
@@ -608,25 +608,29 @@ class BytecodeWriter:
 
 # Utility classes and functions.
 
+
 class LazyDict(UserDict):
     def __getitem__(self, key):
-        if not self.data.has_key(key):
+        if key not in self.data:
             # NOTE: Assume 16-bit value.
             self.data[key] = LazyValue(2)
         return self.data[key]
+
     def __setitem__(self, key, value):
-        if self.data.has_key(key):
+        if key in self.data:
             existing_value = self.data[key]
             if isinstance(existing_value, LazyValue):
                 existing_value.set_value(value)
                 return
         self.data[key] = value
 
+
 class LazyValue:
     def __init__(self, nvalues):
         self.values = []
         for i in range(0, nvalues):
             self.values.append(LazySubValue())
+
     def set_value(self, value):
         # NOTE: Assume at least 16-bit value. No "filling" performed.
         if value <= 0xffff:
@@ -635,6 +639,7 @@ class LazyValue:
         else:
             # NOTE: EXTENDED_ARG not yet supported.
             raise ValueError, value
+
     def get_value(self):
         value = 0
         values = self.values[:]
@@ -642,14 +647,16 @@ class LazyValue:
             value = (value << 8) + values.pop().value
         return value
 
+
 class LazySubValue:
     def __init__(self):
         self.value = 0
+
     def set_value(self, value):
         self.value = value
 
-def signed(value, limit):
 
+def signed(value, limit):
     """
     Return the signed integer from the unsigned 'value', where 'limit' (a value
     one greater than the highest possible positive integer) is used to determine
@@ -663,14 +670,18 @@ def signed(value, limit):
     else:
         return value
 
+
 def signed1(value):
     return signed(value, 0x80)
+
 
 def signed2(value):
     return signed(value, 0x8000)
 
+
 def signed4(value):
     return signed(value, 0x80000000)
+
 
 def load_class_name(class_file, full_class_name, program):
     this_class_name = str(class_file.this_class.get_python_name())
@@ -687,25 +698,24 @@ def load_class_name(class_file, full_class_name, program):
     else:
         program.load_global(class_parts[-1])
 
-atypes_to_default_values = {
-    4 : 0,      # bool (NOTE: Should be False.)
-    5 : u"",    # char
-    6 : 0.0,    # float
-    7 : 0.0,    # double
-    8 : 0,      # byte
-    9 : 0,      # short
-    10: 0,      # int
-    11: 0       # long
-}
+ATYPE_DEFAULT_VALUES = {4: 0,    # bool (NOTE: Should be False.)
+                        5: u"",  # char
+                        6: 0.0,  # float
+                        7: 0.0,  # double
+                        8: 0,    # byte
+                        9: 0,    # short
+                        10: 0,   # int
+                        11: 0    # long 
+                        }
+
 
 def get_default_for_atype(atype):
-    global atypes_to_default_values
-    return atypes_to_default_values.get(atype)
+    return ATYPE_DEFAULT_VALUES[atype]
 
 # Bytecode conversion.
 
-class BytecodeReader:
 
+class BytecodeReader:
     "A generic Java bytecode reader."
 
     def __init__(self, class_file):
@@ -774,7 +784,6 @@ class BytecodeReader:
                 new_exception.start_pc = exception.start_pc
 
                 # Find the previous exception handler definition.
- 
                 for previous_exception in exception_block_handler[exception.handler_pc][:]:
                     if previous_exception.catch_type == 0:
                         new_exception.end_pc = max(new_exception.end_pc, previous_exception.end_pc)
@@ -793,19 +802,19 @@ class BytecodeReader:
 
             # Index start positions.
 
-            if not exception_block_start.has_key(exception.start_pc):
+            if exception.start_pc not in exception_block_start:
                 exception_block_start[exception.start_pc] = []
             exception_block_start[exception.start_pc].append(exception)
 
             # Index end positions.
 
-            if not exception_block_end.has_key(exception.end_pc):
+            if exception.end_pc not in exception_block_end:
                 exception_block_end[exception.end_pc] = []
             exception_block_end[exception.end_pc].append(exception)
 
             # Index handler positions.
 
-            if not exception_block_handler.has_key(exception.handler_pc):
+            if exception.handler_pc not in exception_block_handler:
                 exception_block_handler[exception.handler_pc] = []
             exception_block_handler[exception.handler_pc].append(exception)
 
@@ -880,221 +889,219 @@ class BytecodeReader:
             arguments = [ord(b) for b in code[self.java_position + 1:self.java_position + 1 + number_of_arguments]]
 
             # Call the handler.
-
             getattr(self, mnemonic)(arguments, program)
             return number_of_arguments
         else:
             # Call the handler.
-
-            return getattr(self, mnemonic)(code[self.java_position+1:], program)
+            return getattr(self, mnemonic)(code[(self.java_position + 1):], program)
 
     java_bytecodes = {
-        # code : (mnemonic, number of following bytes, change in stack)
-        0 : ("nop", 0),
-        1 : ("aconst_null", 0),
-        2 : ("iconst_m1", 0),
-        3 : ("iconst_0", 0),
-        4 : ("iconst_1", 0),
-        5 : ("iconst_2", 0),
-        6 : ("iconst_3", 0),
-        7 : ("iconst_4", 0),
-        8 : ("iconst_5", 0),
-        9 : ("lconst_0", 0),
-        10 : ("lconst_1", 0),
-        11 : ("fconst_0", 0),
-        12 : ("fconst_1", 0),
-        13 : ("fconst_2", 0),
-        14 : ("dconst_0", 0),
-        15 : ("dconst_1", 0),
-        16 : ("bipush", 1),
-        17 : ("sipush", 2),
-        18 : ("ldc", 1),
-        19 : ("ldc_w", 2),
-        20 : ("ldc2_w", 2),
-        21 : ("iload", 1),
-        22 : ("lload", 1),
-        23 : ("fload", 1),
-        24 : ("dload", 1),
-        25 : ("aload", 1),
-        26 : ("iload_0", 0),
-        27 : ("iload_1", 0),
-        28 : ("iload_2", 0),
-        29 : ("iload_3", 0),
-        30 : ("lload_0", 0),
-        31 : ("lload_1", 0),
-        32 : ("lload_2", 0),
-        33 : ("lload_3", 0),
-        34 : ("fload_0", 0),
-        35 : ("fload_1", 0),
-        36 : ("fload_2", 0),
-        37 : ("fload_3", 0),
-        38 : ("dload_0", 0),
-        39 : ("dload_1", 0),
-        40 : ("dload_2", 0),
-        41 : ("dload_3", 0),
-        42 : ("aload_0", 0),
-        43 : ("aload_1", 0),
-        44 : ("aload_2", 0),
-        45 : ("aload_3", 0),
-        46 : ("iaload", 0),
-        47 : ("laload", 0),
-        48 : ("faload", 0),
-        49 : ("daload", 0),
-        50 : ("aaload", 0),
-        51 : ("baload", 0),
-        52 : ("caload", 0),
-        53 : ("saload", 0),
-        54 : ("istore", 1),
-        55 : ("lstore", 1),
-        56 : ("fstore", 1),
-        57 : ("dstore", 1),
-        58 : ("astore", 1),
-        59 : ("istore_0", 0),
-        60 : ("istore_1", 0),
-        61 : ("istore_2", 0),
-        62 : ("istore_3", 0),
-        63 : ("lstore_0", 0),
-        64 : ("lstore_1", 0),
-        65 : ("lstore_2", 0),
-        66 : ("lstore_3", 0),
-        67 : ("fstore_0", 0),
-        68 : ("fstore_1", 0),
-        69 : ("fstore_2", 0),
-        70 : ("fstore_3", 0),
-        71 : ("dstore_0", 0),
-        72 : ("dstore_1", 0),
-        73 : ("dstore_2", 0),
-        74 : ("dstore_3", 0),
-        75 : ("astore_0", 0),
-        76 : ("astore_1", 0),
-        77 : ("astore_2", 0),
-        78 : ("astore_3", 0),
-        79 : ("iastore", 0),
-        80 : ("lastore", 0),
-        81 : ("fastore", 0),
-        82 : ("dastore", 0),
-        83 : ("aastore", 0),
-        84 : ("bastore", 0),
-        85 : ("castore", 0),
-        86 : ("sastore", 0),
-        87 : ("pop", 0),
-        88 : ("pop2", 0),
-        89 : ("dup", 0),
-        90 : ("dup_x1", 0),
-        91 : ("dup_x2", 0),
-        92 : ("dup2", 0),
-        93 : ("dup2_x1", 0),
-        94 : ("dup2_x2", 0),
-        95 : ("swap", 0),
-        96 : ("iadd", 0),
-        97 : ("ladd", 0),
-        98 : ("fadd", 0),
-        99 : ("dadd", 0),
-        100 : ("isub", 0),
-        101 : ("lsub", 0),
-        102 : ("fsub", 0),
-        103 : ("dsub", 0),
-        104 : ("imul", 0),
-        105 : ("lmul", 0),
-        106 : ("fmul", 0),
-        107 : ("dmul", 0),
-        108 : ("idiv", 0),
-        109 : ("ldiv", 0),
-        110 : ("fdiv", 0),
-        111 : ("ddiv", 0),
-        112 : ("irem", 0),
-        113 : ("lrem", 0),
-        114 : ("frem", 0),
-        115 : ("drem", 0),
-        116 : ("ineg", 0),
-        117 : ("lneg", 0),
-        118 : ("fneg", 0),
-        119 : ("dneg", 0),
-        120 : ("ishl", 0),
-        121 : ("lshl", 0),
-        122 : ("ishr", 0),
-        123 : ("lshr", 0),
-        124 : ("iushr", 0),
-        125 : ("lushr", 0),
-        126 : ("iand", 0),
-        127 : ("land", 0),
-        128 : ("ior", 0),
-        129 : ("lor", 0),
-        130 : ("ixor", 0),
-        131 : ("lxor", 0),
-        132 : ("iinc", 2),
-        133 : ("i2l", 0),
-        134 : ("i2f", 0),
-        135 : ("i2d", 0),
-        136 : ("l2i", 0),
-        137 : ("l2f", 0),
-        138 : ("l2d", 0),
-        139 : ("f2i", 0),
-        140 : ("f2l", 0),
-        141 : ("f2d", 0),
-        142 : ("d2i", 0),
-        143 : ("d2l", 0),
-        144 : ("d2f", 0),
-        145 : ("i2b", 0),
-        146 : ("i2c", 0),
-        147 : ("i2s", 0),
-        148 : ("lcmp", 0),
-        149 : ("fcmpl", 0),
-        150 : ("fcmpg", 0),
-        151 : ("dcmpl", 0),
-        152 : ("dcmpg", 0),
-        153 : ("ifeq", 2),
-        154 : ("ifne", 2),
-        155 : ("iflt", 2),
-        156 : ("ifge", 2),
-        157 : ("ifgt", 2),
-        158 : ("ifle", 2),
-        159 : ("if_icmpeq", 2),
-        160 : ("if_icmpne", 2),
-        161 : ("if_icmplt", 2),
-        162 : ("if_icmpge", 2),
-        163 : ("if_icmpgt", 2),
-        164 : ("if_icmple", 2),
-        165 : ("if_acmpeq", 2),
-        166 : ("if_acmpne", 2),
-        167 : ("goto", 2),
-        168 : ("jsr", 2),
-        169 : ("ret", 1),
-        170 : ("tableswitch", None), # variable number of arguments
-        171 : ("lookupswitch", None), # variable number of arguments
-        172 : ("ireturn", 0),
-        173 : ("lreturn", 0),
-        174 : ("freturn", 0),
-        175 : ("dreturn", 0),
-        176 : ("areturn", 0),
-        177 : ("return_", 0),
-        178 : ("getstatic", 2),
-        179 : ("putstatic", 2),
-        180 : ("getfield", 2),
-        181 : ("putfield", 2),
-        182 : ("invokevirtual", 2),
-        183 : ("invokespecial", 2),
-        184 : ("invokestatic", 2),
-        185 : ("invokeinterface", 4),
-        187 : ("new", 2),
-        188 : ("newarray", 1),
-        189 : ("anewarray", 2),
-        190 : ("arraylength", 0),
-        191 : ("athrow", 0),
-        192 : ("checkcast", 2),
-        193 : ("instanceof", 2),
-        194 : ("monitorenter", 0),
-        195 : ("monitorexit", 0),
-        196 : ("wide", None), # 3 or 5 arguments, stack changes according to modified element
-        197 : ("multianewarray", 3),
-        198 : ("ifnull", 2),
-        199 : ("ifnonnull", 2),
-        200 : ("goto_w", 4),
-        201 : ("jsr_w", 4),
+        # code: (mnemonic, number of following bytes, change in stack)
+        0: ("nop", 0),
+        1: ("aconst_null", 0),
+        2: ("iconst_m1", 0),
+        3: ("iconst_0", 0),
+        4: ("iconst_1", 0),
+        5: ("iconst_2", 0),
+        6: ("iconst_3", 0),
+        7: ("iconst_4", 0),
+        8: ("iconst_5", 0),
+        9: ("lconst_0", 0),
+        10: ("lconst_1", 0),
+        11: ("fconst_0", 0),
+        12: ("fconst_1", 0),
+        13: ("fconst_2", 0),
+        14: ("dconst_0", 0),
+        15: ("dconst_1", 0),
+        16: ("bipush", 1),
+        17: ("sipush", 2),
+        18: ("ldc", 1),
+        19: ("ldc_w", 2),
+        20: ("ldc2_w", 2),
+        21: ("iload", 1),
+        22: ("lload", 1),
+        23: ("fload", 1),
+        24: ("dload", 1),
+        25: ("aload", 1),
+        26: ("iload_0", 0),
+        27: ("iload_1", 0),
+        28: ("iload_2", 0),
+        29: ("iload_3", 0),
+        30: ("lload_0", 0),
+        31: ("lload_1", 0),
+        32: ("lload_2", 0),
+        33: ("lload_3", 0),
+        34: ("fload_0", 0),
+        35: ("fload_1", 0),
+        36: ("fload_2", 0),
+        37: ("fload_3", 0),
+        38: ("dload_0", 0),
+        39: ("dload_1", 0),
+        40: ("dload_2", 0),
+        41: ("dload_3", 0),
+        42: ("aload_0", 0),
+        43: ("aload_1", 0),
+        44: ("aload_2", 0),
+        45: ("aload_3", 0),
+        46: ("iaload", 0),
+        47: ("laload", 0),
+        48: ("faload", 0),
+        49: ("daload", 0),
+        50: ("aaload", 0),
+        51: ("baload", 0),
+        52: ("caload", 0),
+        53: ("saload", 0),
+        54: ("istore", 1),
+        55: ("lstore", 1),
+        56: ("fstore", 1),
+        57: ("dstore", 1),
+        58: ("astore", 1),
+        59: ("istore_0", 0),
+        60: ("istore_1", 0),
+        61: ("istore_2", 0),
+        62: ("istore_3", 0),
+        63: ("lstore_0", 0),
+        64: ("lstore_1", 0),
+        65: ("lstore_2", 0),
+        66: ("lstore_3", 0),
+        67: ("fstore_0", 0),
+        68: ("fstore_1", 0),
+        69: ("fstore_2", 0),
+        70: ("fstore_3", 0),
+        71: ("dstore_0", 0),
+        72: ("dstore_1", 0),
+        73: ("dstore_2", 0),
+        74: ("dstore_3", 0),
+        75: ("astore_0", 0),
+        76: ("astore_1", 0),
+        77: ("astore_2", 0),
+        78: ("astore_3", 0),
+        79: ("iastore", 0),
+        80: ("lastore", 0),
+        81: ("fastore", 0),
+        82: ("dastore", 0),
+        83: ("aastore", 0),
+        84: ("bastore", 0),
+        85: ("castore", 0),
+        86: ("sastore", 0),
+        87: ("pop", 0),
+        88: ("pop2", 0),
+        89: ("dup", 0),
+        90: ("dup_x1", 0),
+        91: ("dup_x2", 0),
+        92: ("dup2", 0),
+        93: ("dup2_x1", 0),
+        94: ("dup2_x2", 0),
+        95: ("swap", 0),
+        96: ("iadd", 0),
+        97: ("ladd", 0),
+        98: ("fadd", 0),
+        99: ("dadd", 0),
+        100: ("isub", 0),
+        101: ("lsub", 0),
+        102: ("fsub", 0),
+        103: ("dsub", 0),
+        104: ("imul", 0),
+        105: ("lmul", 0),
+        106: ("fmul", 0),
+        107: ("dmul", 0),
+        108: ("idiv", 0),
+        109: ("ldiv", 0),
+        110: ("fdiv", 0),
+        111: ("ddiv", 0),
+        112: ("irem", 0),
+        113: ("lrem", 0),
+        114: ("frem", 0),
+        115: ("drem", 0),
+        116: ("ineg", 0),
+        117: ("lneg", 0),
+        118: ("fneg", 0),
+        119: ("dneg", 0),
+        120: ("ishl", 0),
+        121: ("lshl", 0),
+        122: ("ishr", 0),
+        123: ("lshr", 0),
+        124: ("iushr", 0),
+        125: ("lushr", 0),
+        126: ("iand", 0),
+        127: ("land", 0),
+        128: ("ior", 0),
+        129: ("lor", 0),
+        130: ("ixor", 0),
+        131: ("lxor", 0),
+        132: ("iinc", 2),
+        133: ("i2l", 0),
+        134: ("i2f", 0),
+        135: ("i2d", 0),
+        136: ("l2i", 0),
+        137: ("l2f", 0),
+        138: ("l2d", 0),
+        139: ("f2i", 0),
+        140: ("f2l", 0),
+        141: ("f2d", 0),
+        142: ("d2i", 0),
+        143: ("d2l", 0),
+        144: ("d2f", 0),
+        145: ("i2b", 0),
+        146: ("i2c", 0),
+        147: ("i2s", 0),
+        148: ("lcmp", 0),
+        149: ("fcmpl", 0),
+        150: ("fcmpg", 0),
+        151: ("dcmpl", 0),
+        152: ("dcmpg", 0),
+        153: ("ifeq", 2),
+        154: ("ifne", 2),
+        155: ("iflt", 2),
+        156: ("ifge", 2),
+        157: ("ifgt", 2),
+        158: ("ifle", 2),
+        159: ("if_icmpeq", 2),
+        160: ("if_icmpne", 2),
+        161: ("if_icmplt", 2),
+        162: ("if_icmpge", 2),
+        163: ("if_icmpgt", 2),
+        164: ("if_icmple", 2),
+        165: ("if_acmpeq", 2),
+        166: ("if_acmpne", 2),
+        167: ("goto", 2),
+        168: ("jsr", 2),
+        169: ("ret", 1),
+        170: ("tableswitch", None),  # variable number of arguments
+        171: ("lookupswitch", None),  # variable number of arguments
+        172: ("ireturn", 0),
+        173: ("lreturn", 0),
+        174: ("freturn", 0),
+        175: ("dreturn", 0),
+        176: ("areturn", 0),
+        177: ("return_", 0),
+        178: ("getstatic", 2),
+        179: ("putstatic", 2),
+        180: ("getfield", 2),
+        181: ("putfield", 2),
+        182: ("invokevirtual", 2),
+        183: ("invokespecial", 2),
+        184: ("invokestatic", 2),
+        185: ("invokeinterface", 4),
+        187: ("new", 2),
+        188: ("newarray", 1),
+        189: ("anewarray", 2),
+        190: ("arraylength", 0),
+        191: ("athrow", 0),
+        192: ("checkcast", 2),
+        193: ("instanceof", 2),
+        194: ("monitorenter", 0),
+        195: ("monitorexit", 0),
+        196: ("wide", None),  # 3 or 5 arguments, stack changes according to modified element
+        197: ("multianewarray", 3),
+        198: ("ifnull", 2),
+        199: ("ifnonnull", 2),
+        200: ("goto_w", 4),
+        201: ("jsr_w", 4),
         }
 
-class BytecodeDisassembler(BytecodeReader):
 
+class BytecodeDisassembler(BytecodeReader):
     "A Java bytecode disassembler."
 
     bytecode_methods = [spec[0] for spec in BytecodeReader.java_bytecodes.values()]
@@ -1130,24 +1137,34 @@ class BytecodeDisassembler(BytecodeReader):
         print default, low, high
         return to_boundary + 12 + (high - low + 1) * 4
 
+
 class BytecodeDisassemblerProgram:
     position = 0
+
     def setup_except(self, target):
         print "(setup_except %s)" % target
+
     def setup_finally(self, target):
         print "(setup_finally %s)" % target
+
     def end_exception(self):
         print "(end_exception)"
+
     def end_exceptions(self):
         print "(end_exceptions)"
+
     def start_handler(self, exc_name, class_file):
         print "(start_handler %s)" % exc_name
+
     def pop_block(self):
         print "(pop_block)"
+
     def load_const(self, const):
         print "(load_const %s)" % const
+
     def return_value(self):
         print "(return_value)"
+
 
 class BytecodeTranslator(BytecodeReader):
 
@@ -1160,7 +1177,7 @@ class BytecodeTranslator(BytecodeReader):
     def aastore(self, arguments, program):
         # NOTE: No type checking performed.
         # Stack: arrayref, index, value
-        program.rot_three() # Stack: value, arrayref, index
+        program.rot_three()  # Stack: value, arrayref, index
         program.store_subscr()
 
     def aconst_null(self, arguments, program):
@@ -1292,7 +1309,7 @@ class BytecodeTranslator(BytecodeReader):
         program.rot_two()           # Stack: int, value
         program.call_function(1)    # Stack: result
 
-    d2l = d2i # Preserving Java semantics
+    d2l = d2i  # Preserving Java semantics
 
     def dadd(self, arguments, program):
         # NOTE: No type checking performed.
@@ -1361,19 +1378,19 @@ class BytecodeTranslator(BytecodeReader):
         program.dup_top()
         program.rot_four()
 
-    dup2 = dup # Ignoring computational type categories
-    dup2_x1 = dup_x1 # Ignoring computational type categories
-    dup2_x2 = dup_x2 # Ignoring computational type categories
+    dup2 = dup  # Ignoring computational type categories
+    dup2_x1 = dup_x1  # Ignoring computational type categories
+    dup2_x2 = dup_x2  # Ignoring computational type categories
 
     def f2d(self, arguments, program):
-        pass # Preserving Java semantics
+        pass  # Preserving Java semantics
 
     def f2i(self, arguments, program):
         program.load_global("int")  # Stack: value, int
         program.rot_two()           # Stack: int, value
         program.call_function(1)    # Stack: result
 
-    f2l = f2i # Preserving Java semantics
+    f2l = f2i  # Preserving Java semantics
     fadd = dadd
     faload = daload
     fastore = dastore
@@ -1442,13 +1459,13 @@ class BytecodeTranslator(BytecodeReader):
         program.rot_two()               # Stack: float, value
         program.call_function(1)        # Stack: result
 
-    i2f = i2d # Not distinguishing between float and double
+    i2f = i2d  # Not distinguishing between float and double
 
     def i2l(self, arguments, program):
-        pass # Preserving Java semantics
+        pass  # Preserving Java semantics
 
     def i2s(self, arguments, program):
-        pass # Not distinguishing between int and short
+        pass  # Not distinguishing between int and short
 
     iadd = fadd
     iaload = faload
@@ -1486,7 +1503,7 @@ class BytecodeTranslator(BytecodeReader):
         offset = signed2((arguments[0] << 8) + arguments[1])
         java_absolute = self.java_position + offset
         program.compare_op(op)
-        program.jump_to_label(0, "next") # skip if false
+        program.jump_to_label(0, "next")  # skip if false
         program.pop_top()
         program.jump_absolute(self.position_mapping[java_absolute])
         program.start_label("next")
@@ -1590,7 +1607,7 @@ class BytecodeTranslator(BytecodeReader):
 
     def _invoke(self, target_name, program):
         # NOTE: Using the string version of the name which may contain incompatible characters.
-        program.load_attr(str(target_name)) # Stack: tuple, method
+        program.load_attr(str(target_name))  # Stack: tuple, method
         program.rot_two()                   # Stack: method, tuple
         program.call_function_var(0)        # Stack: result
 
@@ -1619,12 +1636,10 @@ class BytecodeTranslator(BytecodeReader):
         target_name = target.get_python_name()
 
         # Get the number of parameters from the descriptor.
-
         count = len(target.get_descriptor()[0])
 
         # First, we build a tuple of the reference and arguments.
-
-        program.build_tuple(count + 1)          # Stack: tuple
+        program.build_tuple(count + 1)  # Stack: tuple
 
         # Get the class name instead of the fully qualified name.
         # NOTE: Not bothering with Object initialisation.
@@ -1653,8 +1668,7 @@ class BytecodeTranslator(BytecodeReader):
         count = len(target.get_descriptor()[0])
 
         # Stack: arg1, arg2, ...
-
-        program.build_tuple(count)              # Stack: tuple
+        program.build_tuple(count)  # Stack: tuple
 
         # Use the class to provide access to static methods.
         # Get the class name instead of the fully qualified name.
@@ -1665,7 +1679,7 @@ class BytecodeTranslator(BytecodeReader):
             load_class_name(self.class_file, full_class_name, program)
             self._invoke(target_name, program)
 
-    def invokevirtual (self, arguments, program):
+    def invokevirtual(self, arguments, program):
         # NOTE: This implementation does not perform the necessary checks for
         # NOTE: signature-based polymorphism.
         # NOTE: Java rules not specifically obeyed.
@@ -1702,7 +1716,7 @@ class BytecodeTranslator(BytecodeReader):
     istore_2 = fstore_2
     istore_3 = fstore_3
     isub = fsub
-    iushr = ishr # Ignoring distinctions between arithmetic and logical shifts
+    iushr = ishr  # Ignoring distinctions between arithmetic and logical shifts
 
     def ixor(self, arguments, program):
         # NOTE: No type checking performed.
@@ -1726,7 +1740,7 @@ class BytecodeTranslator(BytecodeReader):
     l2f = i2f
 
     def l2i(self, arguments, program):
-        pass # Preserving Java semantics
+        pass  # Preserving Java semantics
 
     ladd = iadd
     laload = iaload
@@ -1819,8 +1833,8 @@ class BytecodeTranslator(BytecodeReader):
 
         pair_index = 8
         for pair in range(0, npairs):
-            match = classfile.u4(code[pair_index:pair_index+4])
-            offset = classfile.s4(code[pair_index+4:pair_index+8])
+            match = classfile.u4(code[pair_index:(pair_index + 4)])
+            offset = classfile.s4(code[(pair_index + 4):(pair_index + 8)])
             # Calculate the branch target.
             java_absolute = self.java_position + offset
             # Generate branching code.
@@ -1929,7 +1943,7 @@ class BytecodeTranslator(BytecodeReader):
     def pop(self, arguments, program):
         program.pop_top()
 
-    pop2 = pop # ignoring Java stack value distinctions
+    pop2 = pop  # ignoring Java stack value distinctions
 
     def putfield(self, arguments, program):
         index = (arguments[0] << 8) + arguments[1]
@@ -2024,13 +2038,14 @@ class BytecodeTranslator(BytecodeReader):
         # NOTE: To be implemented.
         raise NotImplementedError, "wide"
 
+
 def disassemble(class_file, method):
     disassembler = BytecodeDisassembler(class_file)
     disassembler.process(method, BytecodeDisassemblerProgram())
     return disassembler
 
-class ClassTranslator:
 
+class ClassTranslator:
     """
     A class which provides a wrapper around a class file and the means to
     translate the represented class into a Python class.
@@ -2305,7 +2320,7 @@ class ClassTranslator:
 
             # Remember the real method name and the corresponding methods produced.
 
-            if not self.real_methods.has_key(real_method_name):
+            if real_method_name not in self.real_methods:
                 self.real_methods[real_method_name] = []
             self.real_methods[real_method_name].append((method, fn))
 
@@ -2395,9 +2410,11 @@ class ClassTranslator:
 
 # Test functions, useful for tracing generated bytecode operations.
 
+
 def _map(*args):
     print args
     return apply(__builtins__.map, args)
+
 
 def _isinstance(*args):
     print args
@@ -2416,5 +2433,3 @@ if __name__ == "__main__":
         translator = ClassTranslator(c)
         external_names = translator.process(global_names)
         cls = translator.get_class(global_names)
-
-# vim: tabstop=4 expandtab shiftwidth=4

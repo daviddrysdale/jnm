@@ -22,88 +22,113 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import struct # for general decoding of class files
+import struct  # for general decoding of class files
 
 # Utility functions.
+
 
 def u1(data):
     return struct.unpack(">B", data[0:1])[0]
 
+
 def u2(data):
     return struct.unpack(">H", data[0:2])[0]
+
 
 def s2(data):
     return struct.unpack(">h", data[0:2])[0]
 
+
 def u4(data):
     return struct.unpack(">L", data[0:4])[0]
+
 
 def s4(data):
     return struct.unpack(">l", data[0:4])[0]
 
+
 def s8(data):
     return struct.unpack(">q", data[0:8])[0]
+
 
 def f4(data):
     return struct.unpack(">f", data[0:4])[0]
 
+
 def f8(data):
     return struct.unpack(">d", data[0:8])[0]
+
 
 def su1(value):
     return struct.pack(">B", value)
 
+
 def su2(value):
     return struct.pack(">H", value)
+
 
 def ss2(value):
     return struct.pack(">h", value)
 
+
 def su4(value):
     return struct.pack(">L", value)
+
 
 def ss4(value):
     return struct.pack(">l", value)
 
+
 def ss8(value):
     return struct.pack(">q", value)
 
+
 def sf4(value):
     return struct.pack(">f", value)
+
 
 def sf8(value):
     return struct.pack(">d", value)
 
 # Useful tables and constants.
 
-descriptor_base_type_mapping = {
-    "B" : "int",
-    "C" : "str",
-    "D" : "float",
-    "F" : "float",
-    "I" : "int",
-    "J" : "int",
-    "L" : "object",
-    "S" : "int",
-    "Z" : "bool",
-    "[" : "list"
-    }
+DESCRIPTOR_BASE_TYPE_MAPPING = {"B": "int",
+                                "C": "str",
+                                "D": "float",
+                                "F": "float",
+                                "I": "int",
+                                "J": "int",
+                                "L": "object",
+                                "S": "int",
+                                "Z": "bool",
+                                "[": "list"}
 
-type_names_to_default_values = {
-    "int" : 0,
-    "str" : u"",
-    "float" : 0.0,
-    "object" : None,
-    "bool" : 0, # NOTE: Should be False.
-    "list" : []
-    }
+TYPE_DEFAULT_VALUES = {"int": 0,
+                       "str": u"",
+                       "float": 0.0,
+                       "object": None,
+                       "bool": 0,  # NOTE: Should be False.
+                       "list": []}
+
 
 def get_default_for_type(type_name):
-    global type_names_to_default_values
-    return type_names_to_default_values.get(type_name)
+    return TYPE_DEFAULT_VALUES[type_name]
 
-PUBLIC, PRIVATE, PROTECTED, STATIC, FINAL,  SUPER,  SYNCHRONIZED, VOLATILE, TRANSIENT, NATIVE, INTERFACE, ABSTRACT, STRICT = \
-0x0001, 0x0002,  0x0004,    0x0008, 0x0010, 0x0020, 0x0020,       0x0040,   0x0080,    0x0100, 0x0200,    0x0400,   0x0800
+# Modifier flags
+PUBLIC = 0x0001
+PRIVATE = 0x0002
+PROTECTED = 0x0004
+STATIC = 0x0008
+FINAL = 0x0010
+SUPER = 0x0020
+SYNCHRONIZED = 0x0020
+VOLATILE = 0x0040
+TRANSIENT = 0x0080
+NATIVE = 0x0100
+INTERFACE = 0x0200
+ABSTRACT = 0x0400
+STRICT = 0x0800
+
 
 def has_flags(flags, desired):
     desired_flags = reduce(lambda a, b: a | b, desired, 0)
@@ -111,11 +136,12 @@ def has_flags(flags, desired):
 
 # Useful mix-ins.
 
+
 class PythonMethodUtils(object):
-    symbol_sep = "___" # was "$"
-    type_sep = "__" # replaces "/"
-    array_sep = "_array_" # was "[]"
-    base_seps = ("_", "_") # was "<" and ">"
+    symbol_sep = "___"  # was "$"
+    type_sep = "__"  # replaces "/"
+    array_sep = "_array_"  # was "[]"
+    base_seps = ("_", "_")  # was "<" and ">"
 
     def get_unqualified_python_name(self):
         name = self.get_name()
@@ -147,6 +173,7 @@ class PythonMethodUtils(object):
         else:
             return self.base_seps[0] + base_type + self.base_seps[1] + s
 
+
 class PythonNameUtils(object):
     def get_python_name(self):
         # NOTE: This may not be comprehensive.
@@ -166,7 +193,8 @@ class PythonNameUtils(object):
         elif base_type == "[":
             return self._get_type_name(array_type)
         else:
-            return descriptor_base_type_mapping[base_type]
+            return DESCRIPTOR_BASE_TYPE_MAPPING[base_type]
+
 
 class NameUtils(object):
     def get_name(self):
@@ -175,6 +203,7 @@ class NameUtils(object):
         else:
             # Some name indexes are zero to indicate special conditions.
             return None
+
 
 class NameAndTypeUtils(object):
     def get_name(self):
@@ -203,8 +232,9 @@ class NameAndTypeUtils(object):
 
 # Symbol parsing.
 
+
 def get_method_descriptor(s):
-    assert s[0] == "("
+    assert(s[0] == "(")
     params = []
     s = s[1:]
     while s[0] != ")":
@@ -216,14 +246,18 @@ def get_method_descriptor(s):
         return_type, s = None, s[1:]
     return params, return_type
 
+
 def get_field_descriptor(s):
     return _get_field_type(s)[0]
+
 
 def _get_parameter_descriptor(s):
     return _get_field_type(s)
 
+
 def _get_component_type(s):
     return _get_field_type(s)
+
 
 def _get_field_type(s):
     base_type, s = _get_base_type(s)
@@ -235,19 +269,22 @@ def _get_field_type(s):
         array_type, s = _get_array_type(s)
     return (base_type, object_type, array_type), s
 
+
 def _get_base_type(s):
     if len(s) > 0:
         return s[0], s[1:]
     else:
         return None, s
 
+
 def _get_object_type(s):
     if len(s) > 0:
         s_end = s.find(";")
-        assert s_end != -1
-        return s[:s_end], s[s_end+1:]
+        assert(s_end != -1)
+        return s[:s_end], s[(s_end + 1):]
     else:
         return None, s
+
 
 def _get_array_type(s):
     if len(s) > 0:
@@ -257,13 +294,16 @@ def _get_array_type(s):
 
 # Constant information.
 
+
 class ClassInfo(NameUtils, PythonNameUtils):
     def init(self, data, class_file):
         self.class_file = class_file
         self.name_index = u2(data[0:2])
         return data[2:]
+
     def serialize(self):
         return su2(self.name_index)
+
 
 class RefInfo(NameAndTypeUtils):
     def init(self, data, class_file):
@@ -271,19 +311,24 @@ class RefInfo(NameAndTypeUtils):
         self.class_index = u2(data[0:2])
         self.name_and_type_index = u2(data[2:4])
         return data[4:]
+
     def serialize(self):
-        return su2(self.class_index)+su2(self.name_and_type_index)
+        return su2(self.class_index) + su2(self.name_and_type_index)
+
 
 class FieldRefInfo(RefInfo, PythonNameUtils):
     def get_descriptor(self):
         return RefInfo.get_field_descriptor(self)
 
+
 class MethodRefInfo(RefInfo, PythonMethodUtils):
     def get_descriptor(self):
         return RefInfo.get_method_descriptor(self)
 
+
 class InterfaceMethodRefInfo(MethodRefInfo):
     pass
+
 
 class NameAndTypeInfo(NameUtils, PythonNameUtils):
     def init(self, data, class_file):
@@ -293,7 +338,7 @@ class NameAndTypeInfo(NameUtils, PythonNameUtils):
         return data[4:]
 
     def serialize(self):
-        return su2(self.name_index)+su2(self.descriptor_index)
+        return su2(self.name_index) + su2(self.descriptor_index)
 
     def get_field_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
@@ -301,15 +346,16 @@ class NameAndTypeInfo(NameUtils, PythonNameUtils):
     def get_method_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
-class Utf8Info:
+
+class Utf8Info(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.length = u2(data[0:2])
-        self.bytes = data[2:2+self.length]
-        return data[2+self.length:]
+        self.bytes = data[2:2 + self.length]
+        return data[2 + self.length:]
 
     def serialize(self):
-        return su2(self.length)+self.bytes
+        return su2(self.length) + self.bytes
 
     def __str__(self):
         return self.bytes
@@ -319,6 +365,7 @@ class Utf8Info:
 
     def get_value(self):
         return str(self)
+
 
 class StringInfo(object):
     def init(self, data, class_file):
@@ -338,21 +385,26 @@ class StringInfo(object):
     def get_value(self):
         return str(self)
 
+
 class SmallNumInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.bytes = data[0:4]
         return data[4:]
+
     def serialize(self):
         return self.bytes
+
 
 class IntegerInfo(SmallNumInfo):
     def get_value(self):
         return s4(self.bytes)
 
+
 class FloatInfo(SmallNumInfo):
     def get_value(self):
         return f4(self.bytes)
+
 
 class LargeNumInfo(object):
     def init(self, data, class_file):
@@ -360,13 +412,15 @@ class LargeNumInfo(object):
         self.high_bytes = data[0:4]
         self.low_bytes = data[4:8]
         return data[8:]
+
     def serialize(self):
-        return self.high_bytes+self.low_bytes
+        return self.high_bytes + self.low_bytes
 
 
 class LongInfo(LargeNumInfo):
     def get_value(self):
         return s8(self.high_bytes + self.low_bytes)
+
 
 class DoubleInfo(LargeNumInfo):
     def get_value(self):
@@ -374,6 +428,7 @@ class DoubleInfo(LargeNumInfo):
 
 # Other information.
 # Objects of these classes are generally aware of the class they reside in.
+
 
 class ItemInfo(NameUtils):
     def init(self, data, class_file):
@@ -383,29 +438,35 @@ class ItemInfo(NameUtils):
         self.descriptor_index = u2(data[4:6])
         self.attributes, data = self.class_file._get_attributes(data[6:])
         return data
+
     def serialize(self):
-        od = su2(self.access_flags)+su2(self.name_index)+su2(self.descriptor_index)
+        od = su2(self.access_flags) + su2(self.name_index) + su2(self.descriptor_index)
         od += self.class_file._serialize_attributes(self.attributes)
         return od
+
 
 class FieldInfo(ItemInfo, PythonNameUtils):
     def get_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
+
 class MethodInfo(ItemInfo, PythonMethodUtils):
     def get_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+
 
 class AttributeInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
-        self.info = data[4:4+self.attribute_length]
-        return data[4+self.attribute_length:]
+        self.info = data[4:4 + self.attribute_length]
+        return data[4 + self.attribute_length:]
+
     def serialize(self):
-        return su4(self.attribute_length)+self.info
+        return su4(self.attribute_length) + self.info
 
 # NOTE: Decode the different attribute formats.
+
 
 class SourceFileAttributeInfo(AttributeInfo, NameUtils, PythonNameUtils):
     def init(self, data, class_file):
@@ -414,22 +475,25 @@ class SourceFileAttributeInfo(AttributeInfo, NameUtils, PythonNameUtils):
         # Permit the NameUtils mix-in.
         self.name_index = self.sourcefile_index = u2(data[4:6])
         return data[6:]
+
     def serialize(self):
-        return su4(self.attribute_length)+su2(self.name_index)
+        return su4(self.attribute_length) + su2(self.name_index)
+
 
 class ConstantValueAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
         self.constant_value_index = u2(data[4:6])
-        assert 4+self.attribute_length == 6
-        return data[4+self.attribute_length:]
+        assert((4 + self.attribute_length) == 6)
+        return data[(4 + self.attribute_length):]
 
     def get_value(self):
         return self.class_file.constants[self.constant_value_index - 1].get_value()
 
     def serialize(self):
-        return su4(self.attribute_length)+su2(self.constant_value_index)
+        return su4(self.attribute_length) + su2(self.constant_value_index)
+
 
 class CodeAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -438,9 +502,9 @@ class CodeAttributeInfo(AttributeInfo):
         self.max_stack = u2(data[4:6])
         self.max_locals = u2(data[6:8])
         self.code_length = u4(data[8:12])
-        end_of_code = 12+self.code_length
+        end_of_code = 12 + self.code_length
         self.code = data[12:end_of_code]
-        self.exception_table_length = u2(data[end_of_code:end_of_code+2])
+        self.exception_table_length = u2(data[end_of_code:end_of_code + 2])
         self.exception_table = []
         data = data[end_of_code + 2:]
         for i in range(0, self.exception_table_length):
@@ -449,12 +513,14 @@ class CodeAttributeInfo(AttributeInfo):
             self.exception_table.append(exception)
         self.attributes, data = self.class_file._get_attributes(data)
         return data
+
     def serialize(self):
-        od = su4(self.attribute_length)+su2(self.max_stack)+su2(self.max_locals)+su4(self.code_length)+self.code
+        od = su4(self.attribute_length) + su2(self.max_stack) + su2(self.max_locals) + su4(self.code_length) + self.code
         od += su2(self.exception_table_length)
         od += "".join([e.serialize() for e in self.exception_table])
         od += self.class_file._serialize_attributes(self.attributes)
         return od
+
 
 class ExceptionsAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -464,18 +530,19 @@ class ExceptionsAttributeInfo(AttributeInfo):
         self.exception_index_table = []
         index = 6
         for i in range(0, self.number_of_exceptions):
-            self.exception_index_table.append(u2(data[index:index+2]))
+            self.exception_index_table.append(u2(data[index:index + 2]))
             index += 2
         return data[index:]
 
     def get_exception(self, i):
         exception_index = self.exception_index_table[i]
         return self.class_file.constants[exception_index - 1]
-        
+
     def serialize(self):
-        od = su4(self.attribute_length)+su2(self.number_of_exceptions)
+        od = su4(self.attribute_length) + su2(self.number_of_exceptions)
         od += "".join([su2(ei) for ei in self.exception_index_table])
         return od
+
 
 class InnerClassesAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -491,12 +558,14 @@ class InnerClassesAttributeInfo(AttributeInfo):
         return data
 
     def serialize(self):
-        od = su4(self.attribute_length)+su2(self.number_of_classes)
+        od = su4(self.attribute_length) + su2(self.number_of_classes)
         od += "".join([c.serialize() for c in self.classes])
         return od
 
+
 class SyntheticAttributeInfo(AttributeInfo):
     pass
+
 
 class LineNumberAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -510,11 +579,12 @@ class LineNumberAttributeInfo(AttributeInfo):
             data = line_number.init(data, class_file)
             self.line_number_table.append(line_number)
         return data
-        
+
     def serialize(self):
-        od = su4(self.attribute_length)+su2(self.line_number_table_length)
+        od = su4(self.attribute_length) + su2(self.line_number_table_length)
         od += "".join([ln.serialize() for ln in self.line_number_table])
         return od
+
 
 class LocalVariableAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -530,9 +600,10 @@ class LocalVariableAttributeInfo(AttributeInfo):
         return data
 
     def serialize(self):
-        od = su4(self.attribute_length)+su2(self.local_variable_table_length)
+        od = su4(self.attribute_length) + su2(self.local_variable_table_length)
         od += "".join([lv.serialize() for lv in self.local_variable_table])
         return od
+
 
 class LocalVariableTypeAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -548,51 +619,77 @@ class LocalVariableTypeAttributeInfo(AttributeInfo):
         return data
 
     def serialize(self):
-        od = su4(self.attribute_length)+su2(len(self.local_variable_type_table))
+        od = su4(self.attribute_length) + su2(len(self.local_variable_type_table))
         od += "".join([lv.serialize() for lv in self.local_variable_type_table])
         return od
+
 
 class DeprecatedAttributeInfo(AttributeInfo):
     pass
 
+
 class VerificationTypeInfo(object):
     def __init__(self, tag):
         self.tag = tag
+
     def init(self, data, class_file):
         self.class_file = class_file
         tag = u1(data[0:1])
         assert(tag == self.tag)
         return data[1:]
+
     def serialize(self):
         return su1(self.tag)
+
+
 class TopVariableInfo(VerificationTypeInfo):
     TAG = 0
+
+
 class IntegerVariableInfo(VerificationTypeInfo):
     TAG = 1
+
+
 class FloatVariableInfo(VerificationTypeInfo):
     TAG = 2
+
+
 class DoubleVariableInfo(VerificationTypeInfo):
     TAG = 3
+
+
 class LongVariableInfo(VerificationTypeInfo):
     TAG = 4
+
+
 class NullVariableInfo(VerificationTypeInfo):
     TAG = 5
+
+
 class UninitializedThisVariableInfo(VerificationTypeInfo):
     TAG = 6
+
+
 class ObjectVariableInfo(VerificationTypeInfo):
     TAG = 7
+
     def init(self, data, class_file):
         data = super(ObjectVariableInfo, self).init(data, class_file)
         self.cpool_index = u2(data)
         return data[2:]
+
     def serialize(self):
         return super(ObjectVariableInfo, self).serialize() + su2(self.cpool_index)
+
+
 class UninitializedVariableInfo(VerificationTypeInfo):
     TAG = 8
+
     def init(self, data, class_file):
         data = super(UninitializedVariableInfo, self).init(data, class_file)
         self.offset = u2(data)
         return data[2:]
+
     def serialize(self):
         return super(UninitializedVariableInfo, self).serialize() + su2(self.offset)
 
@@ -602,11 +699,15 @@ VARIABLE_INFO_CLASSES = (TopVariableInfo, IntegerVariableInfo, FloatVariableInfo
 VARIABLE_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in VARIABLE_INFO_CLASSES])
 
 # Exception
+
+
 class UnknownVariableInfo:
     def __init__(self, tag):
         self.tag = tag
+
     def __str__(self):
         return repr(self.tag)
+
 
 def create_verification_type_info(data):
     # Does not consume data, just does lookahead
@@ -614,64 +715,87 @@ def create_verification_type_info(data):
     if tag in VARIABLE_INFO_TAG_MAP:
         return VARIABLE_INFO_TAG_MAP[tag](tag)
     else:
-        raise UnknownVariableInfo, tag
+        raise UnknownVariableInfo(tag)
 
 
 class StackMapFrame(object):
     def __init__(self, frame_type):
         self.frame_type = frame_type
+
     def init(self, data, class_file):
         self.class_file = class_file
         frame_type = u1(data[0:1])
         assert(frame_type == self.frame_type)
         return data[1:]
+
     def serialize(self):
         return su1(self.frame_type)
+
+
 class SameFrame(StackMapFrame):
     TYPE_LOWER = 0
     TYPE_UPPER = 63
+
+
 class SameLocals1StackItemFrame(StackMapFrame):
     TYPE_LOWER = 64
     TYPE_UPPER = 127
+
     def init(self, data, class_file):
         data = super(SameLocals1StackItemFrame, self).init(data, class_file)
         self.offset_delta = self.frame_type - 64
         self.stack = [create_verification_type_info(data)]
         return self.stack[0].init(data, class_file)
+
     def serialize(self):
-        return super(SameLocals1StackItemFrame, self).serialize()+self.stack[0].serialize()
+        return super(SameLocals1StackItemFrame, self).serialize() + self.stack[0].serialize()
+
+
 class SameLocals1StackItemFrameExtended(StackMapFrame):
     TYPE_LOWER = 247
     TYPE_UPPER = 247
+
     def init(self, data, class_file):
         data = super(SameLocals1StackItemFrameExtended, self).init(data, class_file)
         self.offset_delta = u2(data[0:2])
         data = data[2:]
         self.stack = [create_verification_type_info(data)]
         return self.stack[0].init(data, class_file)
+
     def serialize(self):
-        return super(SameLocals1StackItemFrameExtended, self).serialize()+su2(self.offset_delta)+self.stack[0].serialize()
+        return super(SameLocals1StackItemFrameExtended, self).serialize() + su2(self.offset_delta) + self.stack[0].serialize()
+
+
 class ChopFrame(StackMapFrame):
     TYPE_LOWER = 248
     TYPE_UPPER = 250
+
     def init(self, data, class_file):
         data = super(ChopFrame, self).init(data, class_file)
         self.offset_delta = u2(data[0:2])
         return data[2:]
+
     def serialize(self):
-        return super(ChopFrame, self).serialize()+su2(self.offset_delta)
+        return super(ChopFrame, self).serialize() + su2(self.offset_delta)
+
+
 class SameFrameExtended(StackMapFrame):
     TYPE_LOWER = 251
     TYPE_UPPER = 251
+
     def init(self, data, class_file):
         data = super(SameFrameExtended, self).init(data, class_file)
         self.offset_delta = u2(data[0:2])
         return data[2:]
+
     def serialize(self):
-        return super(SameFrameExtended, self).serialize()+su2(self.offset_delta)
+        return super(SameFrameExtended, self).serialize() + su2(self.offset_delta)
+
+
 class AppendFrame(StackMapFrame):
     TYPE_LOWER = 252
     TYPE_UPPER = 254
+
     def init(self, data, class_file):
         data = super(AppendFrame, self).init(data, class_file)
         self.offset_delta = u2(data[0:2])
@@ -683,13 +807,17 @@ class AppendFrame(StackMapFrame):
             data = info.init(data, class_file)
             self.locals.append(info)
         return data
+
     def serialize(self):
-        od = super(AppendFrame, self).serialize()+su2(self.offset_delta)
+        od = super(AppendFrame, self).serialize() + su2(self.offset_delta)
         od += "".join([l.serialize() for l in self.locals])
         return od
+
+
 class FullFrame(StackMapFrame):
     TYPE_LOWER = 255
     TYPE_UPPER = 255
+
     def init(self, data, class_file):
         data = super(FullFrame, self).init(data, class_file)
         self.offset_delta = u2(data[0:2])
@@ -708,8 +836,9 @@ class FullFrame(StackMapFrame):
             data = stack_item.init(data, class_file)
             self.stack.append(stack_item)
         return data
+
     def serialize(self):
-        od = super(FullFrame, self).serialize()+su2(self.offset_delta)+su2(len(self.locals))
+        od = super(FullFrame, self).serialize() + su2(self.offset_delta) + su2(len(self.locals))
         od += "".join([l.serialize() for l in self.locals])
         od += su2(len(self.stack))
         od += "".join([s.serialize() for s in self.stack])
@@ -719,11 +848,15 @@ FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrame
                  ChopFrame, SameFrameExtended, AppendFrame, FullFrame)
 
 # Exception
+
+
 class UnknownStackFrame:
     def __init__(self, frame_type):
         self.frame_type = frame_type
+
     def __str__(self):
         return repr(self.frame_type)
+
 
 def create_stack_frame(data):
     # Does not consume data, just does lookahead
@@ -731,7 +864,8 @@ def create_stack_frame(data):
     for cls in FRAME_CLASSES:
         if frame_type >= cls.TYPE_LOWER and frame_type <= cls.TYPE_UPPER:
             return cls(frame_type)
-    raise UnknownStackFrame, frame_type
+    raise UnknownStackFrame(frame_type)
+
 
 class StackMapTableAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -745,8 +879,9 @@ class StackMapTableAttributeInfo(AttributeInfo):
             data = frame.init(data, class_file)
             self.entries.append(frame)
         return data
+
     def serialize(self):
-        od = su4(self.attribute_length)+su2(len(self.entries))
+        od = su4(self.attribute_length) + su2(len(self.entries))
         od += "".join([e.serialize() for e in self.entries])
         return od
 
@@ -758,8 +893,9 @@ class EnclosingMethodAttributeInfo(AttributeInfo):
         self.class_index = u2(data[4:6])
         self.method_index = u2(data[6:8])
         return data[8:]
+
     def serialize(self):
-        return su4(self.attribute_length)+su2(self.class_index)+su2(self.method_index)
+        return su4(self.attribute_length) + su2(self.class_index) + su2(self.method_index)
 
 
 class SignatureAttributeInfo(AttributeInfo):
@@ -768,8 +904,9 @@ class SignatureAttributeInfo(AttributeInfo):
         self.attribute_length = u4(data[0:4])
         self.signature_index = u2(data[4:6])
         return data[6:]
+
     def serialize(self):
-        return su4(self.attribute_length)+su2(self.signature_index)
+        return su4(self.attribute_length) + su2(self.signature_index)
 
 
 class SourceDebugExtensionAttributeInfo(AttributeInfo):
@@ -777,50 +914,67 @@ class SourceDebugExtensionAttributeInfo(AttributeInfo):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
         self.debug_extension = data[4:(4 + self.attribute_length)]
-        return data[(4+ self.attribute_length):]
+        return data[(4 + self.attribute_length):]
+
     def serialize(self):
-        return su4(self.attribute_length)+self.debug_extension
+        return su4(self.attribute_length) + self.debug_extension
 
 
 class ElementValue(object):
     def __init__(self, tag):
         self.tag = tag
+
     def init(self, data, class_file):
         self.class_file = class_file
         tag = chr(u1(data[0:1]))
         assert(tag == self.tag)
         return data[1:]
+
     def serialize(self):
         return su1(ord(self.tag))
+
+
 class ConstValue(ElementValue):
     def init(self, data, class_file):
         data = super(ConstValue, self).init(data, class_file)
         self.const_value_index = u2(data[0:2])
         return data[2:]
+
     def serialize(self):
-        return super(ConstValue, self).serialize()+su2(self.const_value_index)
+        return super(ConstValue, self).serialize() + su2(self.const_value_index)
+
+
 class EnumConstValue(ElementValue):
     def init(self, data, class_file):
         data = super(EnumConstValue, self).init(data, class_file)
         self.type_name_index = u2(data[0:2])
         self.const_name_index = u2(data[2:4])
         return data[4:]
+
     def serialize(self):
-        return super(EnumConstValue, self).serialize()+su2(self.type_name_index)+su2(self.const_name_index)
+        return super(EnumConstValue, self).serialize() + su2(self.type_name_index) + su2(self.const_name_index)
+
+
 class ClassInfoValue(ElementValue):
     def init(self, data, class_file):
         data = super(ClassInfoValue, self).init(data, class_file)
         self.class_info_index = u2(data[0:2])
         return data[2:]
+
     def serialize(self):
-        return super(ClassInfoValue, self).serialize()+su2(self.class_info_index)
+        return super(ClassInfoValue, self).serialize() + su2(self.class_info_index)
+
+
 class AnnotationValue(ElementValue):
     def init(self, data, class_file):
         data = super(AnnotationValue, self).init(data, class_file)
         self.annotation_value = Annotation()
         return self.annotation_value.init(data, class_file)
+
     def serialize(self):
-        return super(AnnotationValue, self).serialize()+self.annotation_value.serialize()
+        return super(AnnotationValue, self).serialize() + self.annotation_value.serialize()
+
+
 class ArrayValue(ElementValue):
     def init(self, data, class_file):
         data = super(ArrayValue, self).init(data, class_file)
@@ -832,16 +986,21 @@ class ArrayValue(ElementValue):
             data = element_value.init(data, class_file)
             self.values.append(element_value)
         return data
+
     def serialize(self):
-        od = super(ArrayValue, self).serialize()+su2(len(self.values))
+        od = super(ArrayValue, self).serialize() + su2(len(self.values))
         od += "".join([v.serialize() for v in self.values])
         return od
 # Exception
+
+
 class UnknownElementValue:
     def __init__(self, tag):
         self.tag = tag
+
     def __str__(self):
         return repr(self.tag)
+
 
 def create_element_value(data):
     tag = chr(u1(data[0:1]))
@@ -856,8 +1015,8 @@ def create_element_value(data):
     elif tag == '[':
         return ArrayValue(tag)
     else:
-        raise UnknownElementValue, tag
-    
+        raise UnknownElementValue(tag)
+
 
 class Annotation(object):
     def init(self, data, class_file):
@@ -873,9 +1032,10 @@ class Annotation(object):
             data = element_value.init(data, class_file)
             self.element_value_pairs.append((element_name_index, element_value))
         return data
+
     def serialize(self):
-        od = su2(self.type_index)+su2(len(self.element_value_pairs))
-        od += "".join([su2(evp[0])+evp[1].serialize() for evp in self.element_value_pairs])
+        od = su2(self.type_index) + su2(len(self.element_value_pairs))
+        od += "".join([su2(evp[0]) + evp[1].serialize() for evp in self.element_value_pairs])
         return od
 
 
@@ -887,20 +1047,24 @@ class RuntimeAnnotationsAttributeInfo(AttributeInfo):
         data = data[6:]
         self.annotations = []
         for ii in xrange(num_annotations):
-            annotation = Annotation() 
+            annotation = Annotation()
             data = annotation.init(data, class_file)
             self.annotations.append(annotation)
         return data
+
     def serialize(self):
-        od = su4(self.attribute_length)+su2(len(self.annotations))
+        od = su4(self.attribute_length) + su2(len(self.annotations))
         od += "".join([a.serialize() for a in self.annotations])
         return od
+
 
 class RuntimeVisibleAnnotationsAttributeInfo(RuntimeAnnotationsAttributeInfo):
     pass
 
+
 class RuntimeInvisibleAnnotationsAttributeInfo(RuntimeAnnotationsAttributeInfo):
     pass
+
 
 class RuntimeParameterAnnotationsAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -914,23 +1078,27 @@ class RuntimeParameterAnnotationsAttributeInfo(AttributeInfo):
             data = data[2:]
             annotations = []
             for jj in xrange(num_annotations):
-                annotation = Annotation() 
+                annotation = Annotation()
                 data = annotation.init(data, class_file)
                 annotations.append(annotation)
             self.parameter_annotations.append(annotations)
         return data
+
     def serialize(self):
-        od = su4(self.attribute_length)+su1(len(self.parameter_annotations))
+        od = su4(self.attribute_length) + su1(len(self.parameter_annotations))
         for pa in self.parameter_annotations:
             od += su2(len(pa))
             od += "".join([a.serialize() for a in pa])
         return od
-        
+
+
 class RuntimeVisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
     pass
 
+
 class RuntimeInvisibleParameterAnnotationsAttributeInfo(RuntimeParameterAnnotationsAttributeInfo):
     pass
+
 
 class AnnotationDefaultAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
@@ -939,8 +1107,9 @@ class AnnotationDefaultAttributeInfo(AttributeInfo):
         data = data[4:]
         self.default_value = create_element_value(data)
         return self.default_value.init(data, class_file)
+
     def serialize(self):
-        return su4(self.attribute_length)+self.default_value.serialize()
+        return su4(self.attribute_length) + self.default_value.serialize()
 
 
 # Child classes of the attribute information classes.
@@ -953,8 +1122,10 @@ class ExceptionInfo(object):
         self.handler_pc = u2(data[4:6])
         self.catch_type = u2(data[6:8])
         return data[8:]
+
     def serialize(self):
-        return su2(self.start_pc)+su2(self.end_pc)+su2(self.handler_pc)+su2(self.catch_type)
+        return su2(self.start_pc) + su2(self.end_pc) + su2(self.handler_pc) + su2(self.catch_type)
+
 
 class InnerClassInfo(NameUtils):
     def init(self, data, class_file):
@@ -965,8 +1136,10 @@ class InnerClassInfo(NameUtils):
         self.name_index = self.inner_name_index = u2(data[4:6])
         self.inner_class_access_flags = u2(data[6:8])
         return data[8:]
+
     def serialize(self):
-        return su2(self.inner_class_info_index)+su2(self.outer_class_info_index)+su2(self.name_index)+su2(self.inner_class_access_flags)
+        return su2(self.inner_class_info_index) + su2(self.outer_class_info_index) + su2(self.name_index) + su2(self.inner_class_access_flags)
+
 
 class LineNumberInfo(object):
     def init(self, data, class_file):
@@ -974,9 +1147,10 @@ class LineNumberInfo(object):
         self.start_pc = u2(data[0:2])
         self.line_number = u2(data[2:4])
         return data[4:]
-        
+
     def serialize(self):
-        return su2(self.start_pc)+su2(self.line_number)
+        return su2(self.start_pc) + su2(self.line_number)
+
 
 class LocalVariableInfo(NameUtils, PythonNameUtils):
     def init(self, data, class_file):
@@ -990,30 +1164,33 @@ class LocalVariableInfo(NameUtils, PythonNameUtils):
 
     def get_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
-        
+
     def serialize(self):
-        return su2(self.start_pc)+su2(self.length)+su2(self.name_index)+su2(self.descriptor_index)+su2(self.index)
+        return su2(self.start_pc) + su2(self.length) + su2(self.name_index) + su2(self.descriptor_index) + su2(self.index)
 
 # Exceptions.
+
 
 class UnknownTag(Exception):
     def __init__(self, tag):
         self.tag = tag
+
     def __str__(self):
         return repr(self.tag)
+
 
 class UnknownAttribute(Exception):
     def __init__(self, name):
         self.name = name
 
-ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo, 
-                       "ConstantValue": ConstantValueAttributeInfo, 
-                       "Code": CodeAttributeInfo, 
+ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo,
+                       "ConstantValue": ConstantValueAttributeInfo,
+                       "Code": CodeAttributeInfo,
                        "Exceptions": ExceptionsAttributeInfo,
-                       "InnerClasses": InnerClassesAttributeInfo, 
+                       "InnerClasses": InnerClassesAttributeInfo,
                        "Synthetic": SyntheticAttributeInfo,
-                       "LineNumberTable": LineNumberAttributeInfo, 
-                       "LocalVariableTable": LocalVariableAttributeInfo, 
+                       "LineNumberTable": LineNumberAttributeInfo,
+                       "LocalVariableTable": LocalVariableAttributeInfo,
                        "Deprecated": DeprecatedAttributeInfo,
                        # Java SE 1.6, class file >= 50.0, VMSpec v3 s4.7.4
                        "StackMapTable": StackMapTableAttributeInfo,
@@ -1034,12 +1211,12 @@ ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo,
                        # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.19
                        "RuntimeInvisibleParameterAnnotations": RuntimeInvisibleParameterAnnotationsAttributeInfo,
                        # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
-                       "AnnotationDefault": AnnotationDefaultAttributeInfo,}
-                       
+                       "AnnotationDefault": AnnotationDefaultAttributeInfo}
+
 # Abstractions for the main structures.
 
-class ClassFile(object):
 
+class ClassFile(object):
     "A class representing a Java class file."
 
     def __init__(self, s):
@@ -1052,8 +1229,8 @@ class ClassFile(object):
         self.attribute_class_to_index = None
         magic = u4(s[0:])
         if magic != 0xCAFEBABE:
-            raise UnknownAttribute, magic
-        self.minorv,self.majorv = u2(s[4:]),u2(s[6:])
+            raise UnknownAttribute(magic)
+        self.minorv, self.majorv = u2(s[4:]), u2(s[6:])
         self.constants, s = self._get_constants(s[8:])
         self.access_flags, s = self._get_access_flags(s)
         self.this_class, s = self._get_this_class(s)
@@ -1064,7 +1241,7 @@ class ClassFile(object):
         self.attributes, s = self._get_attributes(s)
 
     def serialize(self):
-        od = su4(0xCAFEBABE)+su2(self.minorv)+su2(self.majorv)
+        od = su4(0xCAFEBABE) + su2(self.minorv) + su2(self.majorv)
         od += self._serialize_constants()
         od += self._serialize_access_flags()
         od += self._serialize_this_class()
@@ -1129,10 +1306,9 @@ class ClassFile(object):
         elif tag == 12:
             const = NameAndTypeInfo()
         else:
-            raise UnknownTag, tag
+            raise UnknownTag(tag)
 
         # Initialise the constant object.
-
         s = const.init(s[1:], self)
         return const, s
 
@@ -1170,7 +1346,7 @@ class ClassFile(object):
         if constant_name in ATTR_NAMES_TO_CLASS:
             attribute = ATTR_NAMES_TO_CLASS[constant_name]()
         else:
-            raise UnknownAttribute, constant_name
+            raise UnknownAttribute(constant_name)
         s = attribute.init(s[2:], self)
         return attribute, s
 
@@ -1186,11 +1362,11 @@ class ClassFile(object):
         return self._get_constants_from_table(count, s[2:])
 
     def _serialize_constants(self):
-        return su2(len(self.constants)+1)+"".join([self._encode_const(c) for c in self.constants])
+        return su2(len(self.constants) + 1) + "".join([self._encode_const(c) for c in self.constants])
 
     def _get_access_flags(self, s):
         return u2(s[0:2]), s[2:]
-        
+
     def _serialize_access_flags(self):
         return su2(self.access_flags)
 
@@ -1199,10 +1375,10 @@ class ClassFile(object):
         return self.constants[index - 1], s[2:]
 
     def _serialize_this_class(self):
-        return su2(self.constants.index(self.this_class)+1)
+        return su2(self.constants.index(self.this_class) + 1)
 
     def _serialize_super_class(self):
-        return su2(self.constants.index(self.super_class)+1)
+        return su2(self.constants.index(self.super_class) + 1)
 
     def _get_super_class(self, s):
         index = u2(s[0:2])
@@ -1222,7 +1398,7 @@ class ClassFile(object):
         return interfaces, s
 
     def _serialize_interfaces(self):
-        return su2(len(self.interfaces))+"".join([su2(self.constants.index(interf)+1) for interf in self.interfaces])
+        return su2(len(self.interfaces)) + "".join([su2(self.constants.index(interf) + 1) for interf in self.interfaces])
 
     def _get_fields(self, s):
         number = u2(s[0:2])
@@ -1239,16 +1415,17 @@ class ClassFile(object):
 
     def _serialize_attributes(self, attrs):
         od = su2(len(attrs))
-        if len(attrs) == 0: return od
+        if len(attrs) == 0:
+            return od
         if self.attribute_class_to_index == None:
             self.attribute_class_to_index = {}
             index = 0
             for c in self.constants:
                 index += 1
                 if isinstance(c, Utf8Info) and str(c) in ATTR_NAMES_TO_CLASS.keys():
-                    self.attribute_class_to_index[ATTR_NAMES_TO_CLASS[str(c)]]=index
+                    self.attribute_class_to_index[ATTR_NAMES_TO_CLASS[str(c)]] = index
         for attribute in attrs:
-            for (classtype,name_index) in self.attribute_class_to_index.iteritems():
+            for (classtype, name_index) in self.attribute_class_to_index.iteritems():
                 if isinstance(attribute, classtype):
                     od += su2(name_index)
                     break
@@ -1273,5 +1450,3 @@ if __name__ == "__main__":
     f.close()
     out_data = c.serialize()
     assert(in_data == out_data)
-
-# vim: tabstop=4 expandtab shiftwidth=4
