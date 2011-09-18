@@ -40,7 +40,7 @@ class ClassHooks(ihooks.Hooks):
 
         "Return the recognised suffixes."
 
-        return [("", "", JAVA_PACKAGE), (os.extsep + "jar", "r", JAVA_ARCHIVE)] + ihooks.Hooks.get_suffixes(self)
+        return [("", "r", JAVA_PACKAGE), (os.extsep + "jar", "r", JAVA_ARCHIVE)] + ihooks.Hooks.get_suffixes(self)
 
     def path_isdir(self, x, archive=None):
 
