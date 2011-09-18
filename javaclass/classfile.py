@@ -603,7 +603,10 @@ VARIABLE_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in VARIABLE_INFO_CLASSES])
 
 # Exception
 class UnknownVariableInfo:
-    pass
+    def __init__(self, tag):
+        self.tag = tag
+    def __str__(self):
+        return repr(self.tag)
 
 def create_verification_type_info(data):
     # Does not consume data, just does lookahead
@@ -717,7 +720,10 @@ FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrame
 
 # Exception
 class UnknownStackFrame:
-    pass
+    def __init__(self, frame_type):
+        self.frame_type = frame_type
+    def __str__(self):
+        return repr(self.frame_type)
 
 def create_stack_frame(data):
     # Does not consume data, just does lookahead
@@ -832,7 +838,10 @@ class ArrayValue(ElementValue):
         return od
 # Exception
 class UnknownElementValue:
-    pass
+    def __init__(self, tag):
+        self.tag = tag
+    def __str__(self):
+        return repr(self.tag)
 
 def create_element_value(data):
     tag = chr(u1(data[0:1]))
@@ -987,10 +996,14 @@ class LocalVariableInfo(NameUtils, PythonNameUtils):
 # Exceptions.
 
 class UnknownTag(Exception):
-    pass
+    def __init__(self, tag):
+        self.tag = tag
+    def __str__(self):
+        return repr(self.tag)
 
 class UnknownAttribute(Exception):
-    pass
+    def __init__(self, name):
+        self.name = name
 
 ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo, 
                        "ConstantValue": ConstantValueAttributeInfo, 
