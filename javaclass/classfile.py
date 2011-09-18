@@ -111,7 +111,7 @@ def has_flags(flags, desired):
 
 # Useful mix-ins.
 
-class PythonMethodUtils:
+class PythonMethodUtils(object):
     symbol_sep = "___" # was "$"
     type_sep = "__" # replaces "/"
     array_sep = "_array_" # was "[]"
@@ -147,7 +147,7 @@ class PythonMethodUtils:
         else:
             return self.base_seps[0] + base_type + self.base_seps[1] + s
 
-class PythonNameUtils:
+class PythonNameUtils(object):
     def get_python_name(self):
         # NOTE: This may not be comprehensive.
         if not str(self.get_name()).startswith("["):
@@ -168,7 +168,7 @@ class PythonNameUtils:
         else:
             return descriptor_base_type_mapping[base_type]
 
-class NameUtils:
+class NameUtils(object):
     def get_name(self):
         if self.name_index != 0:
             return self.class_file.constants[self.name_index - 1]
@@ -176,7 +176,7 @@ class NameUtils:
             # Some name indexes are zero to indicate special conditions.
             return None
 
-class NameAndTypeUtils:
+class NameAndTypeUtils(object):
     def get_name(self):
         if self.name_and_type_index != 0:
             return self.class_file.constants[self.name_and_type_index - 1].get_name()
@@ -320,7 +320,7 @@ class Utf8Info:
     def get_value(self):
         return str(self)
 
-class StringInfo:
+class StringInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.string_index = u2(data[0:2])
@@ -338,7 +338,7 @@ class StringInfo:
     def get_value(self):
         return str(self)
 
-class SmallNumInfo:
+class SmallNumInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.bytes = data[0:4]
@@ -354,7 +354,7 @@ class FloatInfo(SmallNumInfo):
     def get_value(self):
         return f4(self.bytes)
 
-class LargeNumInfo:
+class LargeNumInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.high_bytes = data[0:4]
@@ -396,7 +396,7 @@ class MethodInfo(ItemInfo, PythonMethodUtils):
     def get_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
-class AttributeInfo:
+class AttributeInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
@@ -968,7 +968,7 @@ class InnerClassInfo(NameUtils):
     def serialize(self):
         return su2(self.inner_class_info_index)+su2(self.outer_class_info_index)+su2(self.name_index)+su2(self.inner_class_access_flags)
 
-class LineNumberInfo:
+class LineNumberInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.start_pc = u2(data[0:2])
@@ -1038,7 +1038,7 @@ ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo,
                        
 # Abstractions for the main structures.
 
-class ClassFile:
+class ClassFile(object):
 
     "A class representing a Java class file."
 
