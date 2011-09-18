@@ -594,7 +594,7 @@ class UninitializedVariableInfo(VerificationTypeInfo):
         self.offset = u2(data)
         return data[2:]
     def serialize(self):
-        return super(ObjectVariableInfo, self).serialize() + su2(self.offset)
+        return super(UninitializedVariableInfo, self).serialize() + su2(self.offset)
 
 VARIABLE_INFO_CLASSES = (TopVariableInfo, IntegerVariableInfo, FloatVariableInfo, DoubleVariableInfo,
                          LongVariableInfo, NullVariableInfo, UninitializedThisVariableInfo,
