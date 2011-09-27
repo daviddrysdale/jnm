@@ -3,6 +3,7 @@
 """
 Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
 Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
+Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU Lesser General Public License as published by the Free
@@ -18,4 +19,4 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-__version__ = "0.2"
+__version__ = "0.3"
