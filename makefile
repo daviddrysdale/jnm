@@ -6,7 +6,7 @@ test: testclasses testjar
 test.jar: $(TEST_CLASS_FILES)
 	jar -cf $@ $^
 
-testclasses:
+testclasses: $(TEST_CLASS_FILES)
 	@list='$(TEST_CLASS_FILES)'; for cfile in $$list; do \
 	  python javaclass/classfile.py $$cfile; \
 	done
