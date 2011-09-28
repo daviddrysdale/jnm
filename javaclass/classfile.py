@@ -698,15 +698,9 @@ VARIABLE_INFO_CLASSES = (TopVariableInfo, IntegerVariableInfo, FloatVariableInfo
                          ObjectVariableInfo, UninitializedVariableInfo)
 VARIABLE_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in VARIABLE_INFO_CLASSES])
 
-# Exception
 
-
-class UnknownVariableInfo:
-    def __init__(self, tag):
-        self.tag = tag
-
-    def __str__(self):
-        return repr(self.tag)
+class UnknownVariableInfo(Exception):
+    pass
 
 
 def create_verification_type_info(data):
@@ -847,15 +841,9 @@ class FullFrame(StackMapFrame):
 FRAME_CLASSES = (SameFrame, SameLocals1StackItemFrame, SameLocals1StackItemFrameExtended,
                  ChopFrame, SameFrameExtended, AppendFrame, FullFrame)
 
-# Exception
 
-
-class UnknownStackFrame:
-    def __init__(self, frame_type):
-        self.frame_type = frame_type
-
-    def __str__(self):
-        return repr(self.frame_type)
+class UnknownStackFrame(Exception):
+    pass
 
 
 def create_stack_frame(data):
@@ -995,11 +983,7 @@ class ArrayValue(ElementValue):
 
 
 class UnknownElementValue:
-    def __init__(self, tag):
-        self.tag = tag
-
-    def __str__(self):
-        return repr(self.tag)
+    pass
 
 
 def create_element_value(data):
@@ -1168,20 +1152,13 @@ class LocalVariableInfo(NameUtils, PythonNameUtils):
     def serialize(self):
         return su2(self.start_pc) + su2(self.length) + su2(self.name_index) + su2(self.descriptor_index) + su2(self.index)
 
-# Exceptions.
-
 
 class UnknownTag(Exception):
-    def __init__(self, tag):
-        self.tag = tag
-
-    def __str__(self):
-        return repr(self.tag)
+    pass
 
 
 class UnknownAttribute(Exception):
-    def __init__(self, name):
-        self.name = name
+    pass
 
 ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo,
                        "ConstantValue": ConstantValueAttributeInfo,

@@ -1,4 +1,5 @@
-* TODO Make exceptions derive from exception
+* DONE Make exceptions derive from exception
+  CLOSED: [2011-09-28 Wed 21:11]
 * DONE Get rid of old-style raise
   CLOSED: [2011-09-18 Sun 21:19]
 * DONE Get rid of blank lines
