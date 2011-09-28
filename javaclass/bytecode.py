@@ -204,7 +204,7 @@ class BytecodeWriter:
             self.position += 2
         else:
             # NOTE: EXTENDED_ARG not yet supported.
-            raise ValueError, value
+            raise ValueError(value)
 
     def _rewrite_value(self, position, value):
 
@@ -218,7 +218,7 @@ class BytecodeWriter:
             self.output[position + 1] = ((value & 0xff00) >> 8)
         else:
             # NOTE: EXTENDED_ARG not yet supported.
-            raise ValueError, value
+            raise ValueError(value)
 
     # Higher level methods.
 
@@ -638,7 +638,7 @@ class LazyValue:
             self.values[1].set_value((value & 0xff00) >> 8)
         else:
             # NOTE: EXTENDED_ARG not yet supported.
-            raise ValueError, value
+            raise ValueError(value)
 
     def get_value(self):
         value = 0
@@ -705,7 +705,7 @@ ATYPE_DEFAULT_VALUES = {4: 0,    # bool (NOTE: Should be False.)
                         8: 0,    # byte
                         9: 0,    # short
                         10: 0,   # int
-                        11: 0    # long 
+                        11: 0    # long
                         }
 
 
@@ -1111,7 +1111,7 @@ class BytecodeDisassembler(BytecodeReader):
             print "%5s %s" % (self.java_position, name),
             return self.generic
         else:
-            raise AttributeError, name
+            raise AttributeError(name)
 
     def generic(self, arguments, program):
         print arguments
@@ -2036,7 +2036,7 @@ class BytecodeTranslator(BytecodeReader):
 
     def wide(self, code, program):
         # NOTE: To be implemented.
-        raise NotImplementedError, "wide"
+        raise NotImplementedError("wide")
 
 
 def disassemble(class_file, method):
@@ -2387,7 +2387,7 @@ class ClassTranslator:
         try:
             return classes[class_name]
         except KeyError:
-            raise AttributeError, "Cannot find Java class '%s'" % class_name
+            raise AttributeError("Cannot find Java class '%s'" % class_name)
 
     def make_varnames(self, nlocals, method_is_static=0):
 
