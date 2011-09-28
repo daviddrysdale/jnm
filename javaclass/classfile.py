@@ -138,10 +138,10 @@ def has_flags(flags, desired):
 
 
 class PythonMethodUtils(object):
-    symbol_sep = "___"  # was "$"
-    type_sep = "__"  # replaces "/"
-    array_sep = "_array_"  # was "[]"
-    base_seps = ("_", "_")  # was "<" and ">"
+    SYMBOL_SEP = "___"  # was "$"
+    TYPE_SEP = "__"  # replaces "/"
+    ARRAY_SEP = "_array_"  # was "[]"
+    BASE_SEPS = ("_", "_")  # was "<" and ">"
 
     def get_unqualified_python_name(self):
         name = self.get_name()
@@ -156,22 +156,22 @@ class PythonMethodUtils(object):
         name = self.get_unqualified_python_name()
         if name == "__clinit__":
             return name
-        return name + self.symbol_sep + self._get_descriptor_as_name()
+        return name + self.SYMBOL_SEP + self._get_descriptor_as_name()
 
     def _get_descriptor_as_name(self):
         l = []
         for descriptor_type in self.get_descriptor()[0]:
             l.append(self._get_type_as_name(descriptor_type))
-        return self.symbol_sep.join(l)
+        return self.SYMBOL_SEP.join(l)
 
     def _get_type_as_name(self, descriptor_type, s=""):
         base_type, object_type, array_type = descriptor_type
         if base_type == "L":
-            return object_type.replace("/", self.type_sep) + s
+            return object_type.replace("/", self.TYPE_SEP) + s
         elif base_type == "[":
-            return self._get_type_as_name(array_type, s + self.array_sep)
+            return self._get_type_as_name(array_type, s + self.ARRAY_SEP)
         else:
-            return self.base_seps[0] + base_type + self.base_seps[1] + s
+            return self.BASE_SEPS[0] + base_type + self.BASE_SEPS[1] + s
 
 
 class PythonNameUtils(object):
@@ -979,7 +979,6 @@ class ArrayValue(ElementValue):
         od = super(ArrayValue, self).serialize() + su2(len(self.values))
         od += "".join([v.serialize() for v in self.values])
         return od
-# Exception
 
 
 class UnknownElementValue:

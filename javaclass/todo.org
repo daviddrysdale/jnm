@@ -6,5 +6,6 @@
   CLOSED: [2011-09-18 Sun 21:19]
 * DONE PEP8 compliance
   CLOSED: [2011-09-18 Sun 21:16]
-* TODO Constants to all caps
+* DONE Constants to all caps
+  CLOSED: [2011-09-28 Wed 21:14]
 * TODO 80-char lines

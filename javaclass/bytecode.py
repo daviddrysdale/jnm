@@ -852,7 +852,7 @@ class BytecodeReader:
             # Process the bytecode at the current position.
 
             bytecode = ord(code[self.java_position])
-            mnemonic, number_of_arguments = self.java_bytecodes[bytecode]
+            mnemonic, number_of_arguments = self.JAVA_BYTECODES[bytecode]
             number_of_arguments = self.process_bytecode(mnemonic, number_of_arguments, code, program)
             next_java_position = self.java_position + 1 + number_of_arguments
 
@@ -895,7 +895,7 @@ class BytecodeReader:
             # Call the handler.
             return getattr(self, mnemonic)(code[(self.java_position + 1):], program)
 
-    java_bytecodes = {
+    JAVA_BYTECODES = {
         # code: (mnemonic, number of following bytes, change in stack)
         0: ("nop", 0),
         1: ("aconst_null", 0),
@@ -1104,10 +1104,10 @@ class BytecodeReader:
 class BytecodeDisassembler(BytecodeReader):
     "A Java bytecode disassembler."
 
-    bytecode_methods = [spec[0] for spec in BytecodeReader.java_bytecodes.values()]
+    BYTECODE_METHODS = [spec[0] for spec in BytecodeReader.JAVA_BYTECODES.values()]
 
     def __getattr__(self, name):
-        if name in self.bytecode_methods:
+        if name in self.BYTECODE_METHODS:
             print "%5s %s" % (self.java_position, name),
             return self.generic
         else:
