@@ -22,11 +22,12 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import struct  # for general decoding of class files
+import struct
+
+from jvmspec import *
+
 
 # Utility functions.
-
-
 def u1(data):
     return struct.unpack(">B", data[0:1])[0]
 
@@ -90,90 +91,10 @@ def sf4(value):
 def sf8(value):
     return struct.pack(">d", value)
 
-# Map from Java field type descriptors to type names; VMSpec 4.3.2
-DESCRIPTOR_JAVA_TYPE_MAPPING = {"B": "byte",
-                                "C": "char",
-                                "D": "double",
-                                "F": "float",
-                                "I": "int",
-                                "J": "long",
-                                "L": "<class>",  # special
-                                "S": "short",
-                                "Z": "boolean",
-                                "[": "<array>",  # special
-                                }
-
-# Map from Java field type descriptors to Python types
-DESCRIPTOR_BASE_TYPE_MAPPING = {"B": "int",
-                                "C": "str",
-                                "D": "float",
-                                "F": "float",
-                                "I": "int",
-                                "J": "int",
-                                "L": "object",
-                                "S": "int",
-                                "Z": "bool",
-                                "[": "list"}
-
-TYPE_DEFAULT_VALUES = {"int": 0,
-                       "str": u"",
-                       "float": 0.0,
-                       "object": None,
-                       "bool": 0,  # NOTE: Should be False.
-                       "list": []}
-
-
-def get_default_for_type(type_name):
-    return TYPE_DEFAULT_VALUES[type_name]
-
-# Modifier flags
-PUBLIC = 0x0001
-PRIVATE = 0x0002
-PROTECTED = 0x0004
-STATIC = 0x0008
-FINAL = 0x0010
-SUPER = 0x0020
-SYNCHRONIZED = 0x0020
-VOLATILE = 0x0040
-TRANSIENT = 0x0080
-NATIVE = 0x0100
-INTERFACE = 0x0200
-ABSTRACT = 0x0400
-STRICT = 0x0800
-
 
 def has_flags(flags, desired):
     desired_flags = reduce(lambda a, b: a | b, desired, 0)
     return (flags & desired_flags) == desired_flags
-
-
-def modifier_description(flags):
-    modifiers = []
-    if ((flags & PUBLIC) != 0):
-        modifiers.append("public")
-    if ((flags & PRIVATE) != 0):
-        modifiers.append("private")
-    if ((flags & PROTECTED) != 0):
-        modifiers.append("protected")
-    if ((flags & STATIC) != 0):
-        modifiers.append("static")
-    if ((flags & FINAL) != 0):
-        modifiers.append("final")
-    if ((flags & SYNCHRONIZED) != 0):
-        modifiers.append("synchronized")
-    if ((flags & VOLATILE) != 0):
-        modifiers.append("volatile")
-    if ((flags & TRANSIENT) != 0):
-        modifiers.append("transient")
-    if ((flags & NATIVE) != 0):
-        modifiers.append("native")
-    if ((flags & INTERFACE) != 0):
-        modifiers.append("interface")
-    if ((flags & ABSTRACT) != 0):
-        modifiers.append("abstract")
-    if ((flags & STRICT) != 0):
-        modifiers.append("strict")
-    return " ".join(modifiers)
 
 
 class NameAndTypeUtils(object):
@@ -262,58 +183,6 @@ def safe(s):
         return '"%s"' % s
     else:
         return s
-
-
-def fqcn(s):
-    # VMSpec 4.2
-    return s.replace("/", ".")
-
-
-def demangle_field_descriptor(s, void_allowed=False):
-    """Convert field descriptor to a string describing the field.
-
-    Returns (description, rest)"""
-    # VMSpec 4.3.2
-    dim = 0
-    ii = 0
-    while ii < len(s):
-        c = s[ii]
-        if c == "[":
-            dim += 1
-        elif c == "V" and void_allowed:
-            if dim > 0:
-                raise Exception("Cannot have array of void")
-            return "void", s[ii + 1:]
-        elif c == "L":
-            endpoint = s.find(";", ii)
-            if endpoint == -1:
-                raise Exception("Failed to find end of classname")
-            classname = fqcn(s[ii + 1:endpoint])
-            return classname + dim * "[]", s[endpoint + 1:]
-        elif c in DESCRIPTOR_JAVA_TYPE_MAPPING:
-            return DESCRIPTOR_JAVA_TYPE_MAPPING[c] + dim * "[]", s[ii + 1:]
-        else:
-            raise Exception("Unknown descriptor code %s" % c)
-        ii += 1
-    raise Exception("Failed to find single field in %s" % s)
-
-
-def demangle_method_descriptor(s):
-    """Convert method descriptor to a pair of strings describing parameters and return type."""
-    # VMSpec 4.3.3
-    if s[0] != "(":
-        raise Exception("Method descriptor %s should start with (" % s)
-    s = s[1:]
-    params = []
-    while s[0] != ")" and len(s) > 0:
-        result, s = demangle_field_descriptor(s)
-        params.append(result)
-    if (len(s) == 0 or s[0] != ")"):
-        raise Exception("Method descriptor %s should include )" % s)
-    return_type, s = demangle_field_descriptor(s[1:], void_allowed=True)
-    if len(s) > 0:
-        raise Exception("Unexpected extra text in %s" % s)
-    return (params, return_type)
 
 
 # Constant information.
@@ -559,7 +428,7 @@ class FieldInfo(ItemInfo):
 
     def dump(self):
         return ("%s %s %s;\n  Signature: %s\n\n" %
-                (modifier_description(self.access_flags),
+                (access_description(self.access_flags),
                  demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
                  str(self.class_file.constants[self.name_index - 1]),
                  str(self.class_file.constants[self.descriptor_index - 1])))
@@ -574,14 +443,14 @@ class MethodInfo(ItemInfo):
         method_name = str(self.class_file.constants[self.name_index - 1])
         if method_name == "<init>":
             result = ("%s %s(%s);\n" %
-                      (modifier_description(self.access_flags),
+                      (access_description(self.access_flags),
                        str(self.class_file.this_class),
                        " ,".join(params)))
         elif method_name == "<clinit>":
-            result = "%s {};\n" % modifier_description(self.access_flags)
+            result = "%s {};\n" % access_description(self.access_flags)
         else:
             result = ("%s %s %s(%s);\n" %
-                      (modifier_description(self.access_flags),
+                      (access_description(self.access_flags),
                        return_type,
                        method_name,
                        " ,".join(params)))
@@ -1518,7 +1387,7 @@ class ClassFile(object):
         if self.sourcefile_attribute is not None:
             result += 'Compiled from "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
         result += (u"%s class %s extends %s" %
-                  (modifier_description(self.access_flags & ~SYNCHRONIZED),
+                  (access_description(self.access_flags & ~SYNCHRONIZED),
                    fqcn(str(self.this_class)),
                    fqcn(str(self.super_class))))
         if self.interfaces:
