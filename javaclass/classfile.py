@@ -134,85 +134,10 @@ def has_flags(flags, desired):
     desired_flags = reduce(lambda a, b: a | b, desired, 0)
     return (flags & desired_flags) == desired_flags
 
-# Useful mix-ins.
 
-
-class PythonMethodUtils(object):
-    SYMBOL_SEP = "___"  # was "$"
-    TYPE_SEP = "__"  # replaces "/"
-    ARRAY_SEP = "_array_"  # was "[]"
-    BASE_SEPS = ("_", "_")  # was "<" and ">"
-
-    def get_unqualified_python_name(self):
-        name = self.get_name()
-        if str(name) == "<init>":
-            return "__init__"
-        elif str(name) == "<clinit>":
-            return "__clinit__"
-        else:
-            return str(name)
-
-    def get_python_name(self):
-        name = self.get_unqualified_python_name()
-        if name == "__clinit__":
-            return name
-        return name + self.SYMBOL_SEP + self._get_descriptor_as_name()
-
-    def _get_descriptor_as_name(self):
-        l = []
-        for descriptor_type in self.get_descriptor()[0]:
-            l.append(self._get_type_as_name(descriptor_type))
-        return self.SYMBOL_SEP.join(l)
-
-    def _get_type_as_name(self, descriptor_type, s=""):
-        base_type, object_type, array_type = descriptor_type
-        if base_type == "L":
-            return object_type.replace("/", self.TYPE_SEP) + s
-        elif base_type == "[":
-            return self._get_type_as_name(array_type, s + self.ARRAY_SEP)
-        else:
-            return self.BASE_SEPS[0] + base_type + self.BASE_SEPS[1] + s
-
-
-class PythonNameUtils(object):
-    def get_python_name(self):
-        # NOTE: This may not be comprehensive.
-        if not str(self.get_name()).startswith("["):
-            return str(self.get_name()).replace("/", ".")
-        else:
-            return self._get_type_name(
-                get_field_descriptor(
-                    str(self.get_name())
-                    )
-                ).replace("/", ".")
-
-    def _get_type_name(self, descriptor_type):
-        base_type, object_type, array_type = descriptor_type
-        if base_type == "L":
-            return object_type
-        elif base_type == "[":
-            return self._get_type_name(array_type)
-        else:
-            return DESCRIPTOR_BASE_TYPE_MAPPING[base_type]
-
-
-class NameUtils(object):
-    def get_name(self):
-        if self.name_index != 0:
-            return self.class_file.constants[self.name_index - 1]
-        else:
-            # Some name indexes are zero to indicate special conditions.
-            return None
 
 
 class NameAndTypeUtils(object):
-    def get_name(self):
-        if self.name_and_type_index != 0:
-            return self.class_file.constants[self.name_and_type_index - 1].get_name()
-        else:
-            # Some name indexes are zero to indicate special conditions.
-            return None
-
     def get_field_descriptor(self):
         if self.name_and_type_index != 0:
             return self.class_file.constants[self.name_and_type_index - 1].get_field_descriptor()
@@ -298,7 +223,7 @@ class ConstantInfo(object):
     pass
 
 
-class ClassInfo(ConstantInfo, NameUtils, PythonNameUtils):
+class ClassInfo(ConstantInfo):
     TAG = 7
     def init(self, data, class_file):
         self.class_file = class_file
@@ -320,13 +245,13 @@ class RefInfo(ConstantInfo, NameAndTypeUtils):
         return su2(self.class_index) + su2(self.name_and_type_index)
 
 
-class FieldRefInfo(RefInfo, PythonNameUtils):
+class FieldRefInfo(RefInfo):
     TAG = 9
     def get_descriptor(self):
         return RefInfo.get_field_descriptor(self)
 
 
-class MethodRefInfo(RefInfo, PythonMethodUtils):
+class MethodRefInfo(RefInfo):
     TAG = 10
     def get_descriptor(self):
         return RefInfo.get_method_descriptor(self)
@@ -336,7 +261,7 @@ class InterfaceMethodRefInfo(MethodRefInfo):
     TAG = 11
 
 
-class NameAndTypeInfo(ConstantInfo, NameUtils, PythonNameUtils):
+class NameAndTypeInfo(ConstantInfo):
     TAG = 12
     def init(self, data, class_file):
         self.class_file = class_file
@@ -448,7 +373,7 @@ CONSTANT_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in CONSTANT_INFO_CLASSES])
 # Objects of these classes are generally aware of the class they reside in.
 
 
-class ItemInfo(NameUtils):
+class ItemInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.access_flags = u2(data[0:2])
@@ -463,12 +388,12 @@ class ItemInfo(NameUtils):
         return od
 
 
-class FieldInfo(ItemInfo, PythonNameUtils):
+class FieldInfo(ItemInfo):
     def get_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
 
-class MethodInfo(ItemInfo, PythonMethodUtils):
+class MethodInfo(ItemInfo):
     def get_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
@@ -486,16 +411,15 @@ class AttributeInfo(object):
 # NOTE: Decode the different attribute formats.
 
 
-class SourceFileAttributeInfo(AttributeInfo, NameUtils, PythonNameUtils):
+class SourceFileAttributeInfo(AttributeInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
-        # Permit the NameUtils mix-in.
-        self.name_index = self.sourcefile_index = u2(data[4:6])
+        self.sourcefile_index = u2(data[4:6])
         return data[6:]
 
     def serialize(self):
-        return su4(self.attribute_length) + su2(self.name_index)
+        return su4(self.attribute_length) + su2(self.sourcefile_index)
 
 
 class ConstantValueAttributeInfo(AttributeInfo):
@@ -1128,18 +1052,17 @@ class ExceptionInfo(object):
         return su2(self.start_pc) + su2(self.end_pc) + su2(self.handler_pc) + su2(self.catch_type)
 
 
-class InnerClassInfo(NameUtils):
+class InnerClassInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.inner_class_info_index = u2(data[0:2])
         self.outer_class_info_index = u2(data[2:4])
-        # Permit the NameUtils mix-in.
-        self.name_index = self.inner_name_index = u2(data[4:6])
+        self.inner_name_index = u2(data[4:6])
         self.inner_class_access_flags = u2(data[6:8])
         return data[8:]
 
     def serialize(self):
-        return su2(self.inner_class_info_index) + su2(self.outer_class_info_index) + su2(self.name_index) + su2(self.inner_class_access_flags)
+        return su2(self.inner_class_info_index) + su2(self.outer_class_info_index) + su2(self.inner_name_index) + su2(self.inner_class_access_flags)
 
 
 class LineNumberInfo(object):
@@ -1153,7 +1076,7 @@ class LineNumberInfo(object):
         return su2(self.start_pc) + su2(self.line_number)
 
 
-class LocalVariableInfo(NameUtils, PythonNameUtils):
+class LocalVariableInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         self.start_pc = u2(data[0:2])
