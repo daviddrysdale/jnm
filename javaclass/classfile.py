@@ -90,8 +90,20 @@ def sf4(value):
 def sf8(value):
     return struct.pack(">d", value)
 
-# Useful tables and constants.
+# Map from Java field type descriptors to type names; VMSpec 4.3.2
+DESCRIPTOR_JAVA_TYPE_MAPPING = {"B": "byte",
+                                "C": "char",
+                                "D": "double",
+                                "F": "float",
+                                "I": "int",
+                                "J": "long",
+                                "L": "<class>",  # special
+                                "S": "short",
+                                "Z": "boolean",
+                                "[": "<array>",  # special
+                                }
 
+# Map from Java field type descriptors to Python types
 DESCRIPTOR_BASE_TYPE_MAPPING = {"B": "int",
                                 "C": "str",
                                 "D": "float",
@@ -135,6 +147,33 @@ def has_flags(flags, desired):
     return (flags & desired_flags) == desired_flags
 
 
+def modifier_description(flags):
+    modifiers = []
+    if ((flags & PUBLIC) != 0):
+        modifiers.append("public")
+    if ((flags & PRIVATE) != 0):
+        modifiers.append("private")
+    if ((flags & PROTECTED) != 0):
+        modifiers.append("protected")
+    if ((flags & STATIC) != 0):
+        modifiers.append("static")
+    if ((flags & FINAL) != 0):
+        modifiers.append("final")
+    if ((flags & SYNCHRONIZED) != 0):
+        modifiers.append("synchronized")
+    if ((flags & VOLATILE) != 0):
+        modifiers.append("volatile")
+    if ((flags & TRANSIENT) != 0):
+        modifiers.append("transient")
+    if ((flags & NATIVE) != 0):
+        modifiers.append("native")
+    if ((flags & INTERFACE) != 0):
+        modifiers.append("interface")
+    if ((flags & ABSTRACT) != 0):
+        modifiers.append("abstract")
+    if ((flags & STRICT) != 0):
+        modifiers.append("strict")
+    return " ".join(modifiers)
 
 
 class NameAndTypeUtils(object):
@@ -217,14 +256,78 @@ def _get_array_type(s):
     else:
         return None, s
 
-# Constant information.
 
+def safe(s):
+    if s.find(">") != -1:
+        return '"%s"' % s
+    else:
+        return s
+
+
+def fqcn(s):
+    # VMSpec 4.2
+    return s.replace("/", ".")
+
+
+def demangle_field_descriptor(s, void_allowed=False):
+    """Convert field descriptor to a string describing the field.
+
+    Returns (description, rest)"""
+    # VMSpec 4.3.2
+    dim = 0
+    ii = 0
+    while ii < len(s):
+        c = s[ii]
+        if c == "[":
+            dim += 1
+        elif c == "V" and void_allowed:
+            if dim > 0:
+                raise Exception("Cannot have array of void")
+            return "void", s[ii + 1:]
+        elif c == "L":
+            endpoint = s.find(";", ii)
+            if endpoint == -1:
+                raise Exception("Failed to find end of classname")
+            classname = fqcn(s[ii + 1:endpoint])
+            return classname + dim * "[]", s[endpoint + 1:]
+        elif c in DESCRIPTOR_JAVA_TYPE_MAPPING:
+            return DESCRIPTOR_JAVA_TYPE_MAPPING[c] + dim * "[]", s[ii + 1:]
+        else:
+            raise Exception("Unknown descriptor code %s" % c)
+        ii += 1
+    raise Exception("Failed to find single field in %s" % s)
+
+
+def demangle_method_descriptor(s):
+    """Convert method descriptor to a pair of strings describing parameters and return type."""
+    # VMSpec 4.3.3
+    if s[0] != "(":
+        raise Exception("Method descriptor %s should start with (" % s)
+    s = s[1:]
+    params = []
+    while s[0] != ")" and len(s) > 0:
+        result, s = demangle_field_descriptor(s)
+        params.append(result)
+    if (len(s) == 0 or s[0] != ")"):
+        raise Exception("Method descriptor %s should include )" % s)
+    return_type, s = demangle_field_descriptor(s[1:], void_allowed=True)
+    if len(s) > 0:
+        raise Exception("Unexpected extra text in %s" % s)
+    return (params, return_type)
+
+
+# Constant information.
 class ConstantInfo(object):
-    pass
+    TAG = -1
+
+    def dump(self):
+        return "<unknown %d>" % self.TAG
 
 
 class ClassInfo(ConstantInfo):
     TAG = 7
+    DUMP_NAME = "class"
+
     def init(self, data, class_file):
         self.class_file = class_file
         self.name_index = u2(data[0:2])
@@ -232,6 +335,15 @@ class ClassInfo(ConstantInfo):
 
     def serialize(self):
         return su2(self.name_index)
+
+    def __str__(self):
+        return str(self.class_file.constants[self.name_index - 1])
+
+    def dump(self):
+        return ("%s\t#%d;\t//  %s" %
+                (self.DUMP_NAME,
+                 self.name_index,
+                 str(self)))
 
 
 class RefInfo(ConstantInfo, NameAndTypeUtils):
@@ -244,25 +356,40 @@ class RefInfo(ConstantInfo, NameAndTypeUtils):
     def serialize(self):
         return su2(self.class_index) + su2(self.name_and_type_index)
 
+    def dump(self):
+        return ("%s\t#%d.#%d;\t//  %s.%s" %
+                (self.DUMP_NAME,
+                 self.class_index,
+                 self.name_and_type_index,
+                 str(self.class_file.constants[self.class_index - 1]),
+                 str(self.class_file.constants[self.name_and_type_index - 1])))
+
 
 class FieldRefInfo(RefInfo):
     TAG = 9
+    DUMP_NAME = "Field"
+
     def get_descriptor(self):
         return RefInfo.get_field_descriptor(self)
 
 
 class MethodRefInfo(RefInfo):
     TAG = 10
+    DUMP_NAME = "Method"
+
     def get_descriptor(self):
         return RefInfo.get_method_descriptor(self)
 
 
 class InterfaceMethodRefInfo(MethodRefInfo):
     TAG = 11
+    DUMP_NAME = "InterfaceMethod"
 
 
 class NameAndTypeInfo(ConstantInfo):
     TAG = 12
+    DUMP_NAME = "NameAndType"
+
     def init(self, data, class_file):
         self.class_file = class_file
         self.name_index = u2(data[0:2])
@@ -278,9 +405,22 @@ class NameAndTypeInfo(ConstantInfo):
     def get_method_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
+    def __str__(self):
+        return ("%s:%s" % (safe(str(self.class_file.constants[self.name_index - 1])),
+                           safe(str(self.class_file.constants[self.descriptor_index - 1]))))
+
+    def dump(self):
+        return ("%s\t#%d:#%d;//  %s" %
+                (self.DUMP_NAME,
+                 self.name_index,
+                 self.descriptor_index,
+                 self))
+
 
 class Utf8Info(ConstantInfo):
     TAG = 1
+    DUMP_NAME = "Asciz"
+
     def init(self, data, class_file):
         self.class_file = class_file
         self.length = u2(data[0:2])
@@ -299,9 +439,14 @@ class Utf8Info(ConstantInfo):
     def get_value(self):
         return str(self)
 
+    def dump(self):
+        return ("%s\t%s;" % (self.DUMP_NAME, str(self)))
+
 
 class StringInfo(ConstantInfo):
     TAG = 8
+    DUMP_NAME = "String"
+
     def init(self, data, class_file):
         self.class_file = class_file
         self.string_index = u2(data[0:2])
@@ -319,6 +464,12 @@ class StringInfo(ConstantInfo):
     def get_value(self):
         return str(self)
 
+    def dump(self):
+        return ("%s\t#%d;\t//  %s" %
+                (self.DUMP_NAME,
+                 self.string_index,
+                 self))
+
 
 class SmallNumInfo(ConstantInfo):
     def init(self, data, class_file):
@@ -329,15 +480,22 @@ class SmallNumInfo(ConstantInfo):
     def serialize(self):
         return self.bytes
 
+    def dump(self):
+        return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+
 
 class IntegerInfo(SmallNumInfo):
     TAG = 3
+    DUMP_NAME = "int"
+
     def get_value(self):
         return s4(self.bytes)
 
 
 class FloatInfo(SmallNumInfo):
     TAG = 4
+    DUMP_NAME = "float"
+
     def get_value(self):
         return f4(self.bytes)
 
@@ -352,15 +510,22 @@ class LargeNumInfo(ConstantInfo):
     def serialize(self):
         return self.high_bytes + self.low_bytes
 
+    def dump(self):
+        return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+
 
 class LongInfo(LargeNumInfo):
     TAG = 5
+    DUMP_NAME = "long"
+
     def get_value(self):
         return s8(self.high_bytes + self.low_bytes)
 
 
 class DoubleInfo(LargeNumInfo):
     TAG = 6
+    DUMP_NAME = "double"
+
     def get_value(self):
         return f8(self.high_bytes + self.low_bytes)
 
@@ -392,10 +557,36 @@ class FieldInfo(ItemInfo):
     def get_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
+    def dump(self):
+        return ("%s %s %s;\n  Signature: %s\n\n" %
+                (modifier_description(self.access_flags),
+                 demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
+                 str(self.class_file.constants[self.name_index - 1]),
+                 str(self.class_file.constants[self.descriptor_index - 1])))
+
 
 class MethodInfo(ItemInfo):
     def get_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+
+    def dump(self):
+        params, return_type = demangle_method_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))
+        method_name = str(self.class_file.constants[self.name_index - 1])
+        if method_name == "<init>":
+            result = ("%s %s(%s);\n" %
+                      (modifier_description(self.access_flags),
+                       str(self.class_file.this_class),
+                       " ,".join(params)))
+        elif method_name == "<clinit>":
+            result = "%s {};\n" % modifier_description(self.access_flags)
+        else:
+            result = ("%s %s %s(%s);\n" %
+                      (modifier_description(self.access_flags),
+                       return_type,
+                       method_name,
+                       " ,".join(params)))
+        result += "  Signature: %s\n\n\n" % str(self.class_file.constants[self.descriptor_index - 1])
+        return result
 
 
 class AttributeInfo(object):
@@ -1144,6 +1335,7 @@ class ClassFile(object):
         """
 
         self.attribute_class_to_index = None
+        self.sourcefile_attribute = None
         magic = u4(s[0:])
         if magic != 0xCAFEBABE:
             raise UnknownAttribute(magic)
@@ -1233,6 +1425,8 @@ class ClassFile(object):
         for i in range(0, number):
             attribute, s = self._get_attribute_from_table(s)
             attributes.append(attribute)
+            if isinstance(attribute, SourceFileAttributeInfo):
+                self.sourcefile_attribute = attribute
         return attributes, s
 
     def _get_constants(self, s):
@@ -1318,6 +1512,43 @@ class ClassFile(object):
         od = su2(len(self.methods))
         od += "".join([m.serialize() for m in self.methods])
         return od
+
+    def dump(self):
+        result = ""
+        if self.sourcefile_attribute is not None:
+            result += 'Compiled from "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
+        result += (u"%s class %s extends %s" %
+                  (modifier_description(self.access_flags & ~SYNCHRONIZED),
+                   fqcn(str(self.this_class)),
+                   fqcn(str(self.super_class))))
+        if self.interfaces:
+            result += " implements " + ", ".join([str(interf) for interf in self.interfaces])
+        result += "\n"
+        if self.sourcefile_attribute is not None:
+            result += '  SourceFile: "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
+        result += u"  minor version: %s\n" % self.minorv
+        result += u"  major version: %s\n" % self.majorv
+
+        result += self._dump_constants()
+        result += u"\n{\n"
+        result += self._dump_fields()
+        result += self._dump_methods()
+        result += self._dump_attributes(self.attributes)
+        return result
+
+    def _dump_constants(self):
+        result = u"  Constant pool:\n"
+        result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump()) for ii, c in enumerate(self.constants)])
+        return result
+
+    def _dump_fields(self):
+        return "".join([f.dump() for f in self.fields])
+
+    def _dump_methods(self):
+        return "".join([m.dump() for m in self.methods])
+
+    def _dump_attributes(self, attributes):
+        return ""
 
 
 if __name__ == "__main__":

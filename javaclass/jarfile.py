@@ -24,4 +24,4 @@ if __name__ == "__main__":
     for name in sys.argv[1:]:
         jclasses = jar_classes(name)
         for filename, jc in jclasses:
-            print filename, jc
+            print filename
