@@ -294,8 +294,12 @@ def _get_array_type(s):
 
 # Constant information.
 
+class ConstantInfo(object):
+    pass
 
-class ClassInfo(NameUtils, PythonNameUtils):
+
+class ClassInfo(ConstantInfo, NameUtils, PythonNameUtils):
+    TAG = 7
     def init(self, data, class_file):
         self.class_file = class_file
         self.name_index = u2(data[0:2])
@@ -305,7 +309,7 @@ class ClassInfo(NameUtils, PythonNameUtils):
         return su2(self.name_index)
 
 
-class RefInfo(NameAndTypeUtils):
+class RefInfo(ConstantInfo, NameAndTypeUtils):
     def init(self, data, class_file):
         self.class_file = class_file
         self.class_index = u2(data[0:2])
@@ -317,20 +321,23 @@ class RefInfo(NameAndTypeUtils):
 
 
 class FieldRefInfo(RefInfo, PythonNameUtils):
+    TAG = 9
     def get_descriptor(self):
         return RefInfo.get_field_descriptor(self)
 
 
 class MethodRefInfo(RefInfo, PythonMethodUtils):
+    TAG = 10
     def get_descriptor(self):
         return RefInfo.get_method_descriptor(self)
 
 
 class InterfaceMethodRefInfo(MethodRefInfo):
-    pass
+    TAG = 11
 
 
-class NameAndTypeInfo(NameUtils, PythonNameUtils):
+class NameAndTypeInfo(ConstantInfo, NameUtils, PythonNameUtils):
+    TAG = 12
     def init(self, data, class_file):
         self.class_file = class_file
         self.name_index = u2(data[0:2])
@@ -347,7 +354,8 @@ class NameAndTypeInfo(NameUtils, PythonNameUtils):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
 
-class Utf8Info(object):
+class Utf8Info(ConstantInfo):
+    TAG = 1
     def init(self, data, class_file):
         self.class_file = class_file
         self.length = u2(data[0:2])
@@ -367,7 +375,8 @@ class Utf8Info(object):
         return str(self)
 
 
-class StringInfo(object):
+class StringInfo(ConstantInfo):
+    TAG = 8
     def init(self, data, class_file):
         self.class_file = class_file
         self.string_index = u2(data[0:2])
@@ -386,7 +395,7 @@ class StringInfo(object):
         return str(self)
 
 
-class SmallNumInfo(object):
+class SmallNumInfo(ConstantInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.bytes = data[0:4]
@@ -397,16 +406,18 @@ class SmallNumInfo(object):
 
 
 class IntegerInfo(SmallNumInfo):
+    TAG = 3
     def get_value(self):
         return s4(self.bytes)
 
 
 class FloatInfo(SmallNumInfo):
+    TAG = 4
     def get_value(self):
         return f4(self.bytes)
 
 
-class LargeNumInfo(object):
+class LargeNumInfo(ConstantInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.high_bytes = data[0:4]
@@ -418,13 +429,20 @@ class LargeNumInfo(object):
 
 
 class LongInfo(LargeNumInfo):
+    TAG = 5
     def get_value(self):
         return s8(self.high_bytes + self.low_bytes)
 
 
 class DoubleInfo(LargeNumInfo):
+    TAG = 6
     def get_value(self):
         return f8(self.high_bytes + self.low_bytes)
+
+CONSTANT_INFO_CLASSES = (ClassInfo, FieldRefInfo, MethodRefInfo, InterfaceMethodRefInfo,
+                         StringInfo, IntegerInfo, FloatInfo, LongInfo, DoubleInfo,
+                         NameAndTypeInfo, Utf8Info)
+CONSTANT_INFO_TAG_MAP = dict([(cls.TAG, cls) for cls in CONSTANT_INFO_CLASSES])
 
 # Other information.
 # Objects of these classes are generally aware of the class they reside in.
@@ -1230,28 +1248,8 @@ class ClassFile(object):
 
     def _encode_const(self, c):
         od = ''
-        if isinstance(c, Utf8Info):
-            od += su1(1)
-        elif isinstance(c, IntegerInfo):
-            od += su1(3)
-        elif isinstance(c, FloatInfo):
-            od += su1(4)
-        elif isinstance(c, LongInfo):
-            od += su1(5)
-        elif isinstance(c, DoubleInfo):
-            od += su1(6)
-        elif isinstance(c, ClassInfo):
-            od += su1(7)
-        elif isinstance(c, StringInfo):
-            od += su1(8)
-        elif isinstance(c, FieldRefInfo):
-            od += su1(9)
-        elif isinstance(c, InterfaceMethodRefInfo):  # check subclass first
-            od += su1(11)
-        elif isinstance(c, MethodRefInfo):
-            od += su1(10)
-        elif isinstance(c, NameAndTypeInfo):
-            od += su1(12)
+        if isinstance(c, ConstantInfo):
+            od += su1(c.TAG)
         else:
             return od
         od += c.serialize()
@@ -1259,28 +1257,9 @@ class ClassFile(object):
 
     def _decode_const(self, s):
         tag = u1(s[0:1])
-        if tag == 1:
-            const = Utf8Info()
-        elif tag == 3:
-            const = IntegerInfo()
-        elif tag == 4:
-            const = FloatInfo()
-        elif tag == 5:
-            const = LongInfo()
-        elif tag == 6:
-            const = DoubleInfo()
-        elif tag == 7:
-            const = ClassInfo()
-        elif tag == 8:
-            const = StringInfo()
-        elif tag == 9:
-            const = FieldRefInfo()
-        elif tag == 10:
-            const = MethodRefInfo()
-        elif tag == 11:
-            const = InterfaceMethodRefInfo()
-        elif tag == 12:
-            const = NameAndTypeInfo()
+        if tag in CONSTANT_INFO_TAG_MAP:
+            cls = CONSTANT_INFO_TAG_MAP[tag]
+            const = cls()
         else:
             raise UnknownTag(tag)
 
