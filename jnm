@@ -1,49 +1,70 @@
 #!/usr/bin/env python
-"""Java class file name list, from JVM Spec 3rd edition (draft)
+"""jnm [options] file[s]
 
-Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
-Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
-Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
+jnm displays the symbol table of each file in the argument list.  If an
+argument is a jarfile, a listing for each class file in the file will be
+produced.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU Lesser General Public License as published by the Free
-Software Foundation; either version 3 of the License, or (at your option) any
-later version.
+Each symbol name is preceded by its value (blanks if undefined).  This
+value is followed by one of the following characters, representing the
+symbol type:
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
-details.
+    C  Class
+    D  Static field
+    I  Instance field
+    T  Method
 
-You should have received a copy of the GNU Lesser General Public License along
-with this program.  If not, see <http://www.gnu.org/licenses/>.
+    K  Undefined reference to class
+    F  Undefined reference to static field
+    J  Undefined reference to instance field
+    R  Undefined reference to method
+
+If the symbol is private, the symbol's type is instead represented by
+the corresponding lowercase letter.
 """
+# Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
+# Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
+# Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
+#
+# This program is free software; you can redistribute it and/or modify it under
+# the terms of the GNU Lesser General Public License as published by the Free
+# Software Foundation; either version 3 of the License, or (at your option) any
+# later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License along
+# with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import struct
+import getopt
 
 from javaclass import jvmspec
 from javaclass.jvmspec import fqcn
 from javaclass.jvmspec import demangle_method_descriptor
 from javaclass.jvmspec import demangle_field_descriptor
 from javaclass.jvmspec import size_field_descriptor
-from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
-                                 FieldRefInfo, MethodRefInfo,
-                                 InterfaceMethodRefInfo, NameAndTypeInfo,
-                                 Utf8Info, StringInfo, SmallNumInfo,
-                                 IntegerInfo, FloatInfo, LargeNumInfo,
-                                 LongInfo, DoubleInfo, FieldInfo, MethodInfo,
+from javaclass.classfile import (ClassInfo, FieldRefInfo, MethodRefInfo,
+                                 DoubleInfo, FieldInfo, MethodInfo,
                                  CodeAttributeInfo, ClassFile)
+from javaclass.jarfile import jar_classes
+
 
 class Symbol(object):
     """Class describing a symbol or symbol reference"""
 
-    # Type characters; lowercase for local (=private), uppercase for external (protected/public)
-    CLASS = "C"
-    DATA ='D'
+    # Type characters; lowercase for local (=private), uppercase for external
+    # (protected/public)
+    CLASS = 'C'
+    DATA = 'D'
     CODE = 'T'
-    # Instance data has no equivalent in C -- fields in dynamically allocated objects are accessed
-    # by calculating their offset using the header file definition.  However, Java allows symbolic
-    # access to per-object fields, so need to show them in the output.
+    # Instance data has no equivalent in C -- fields in dynamically allocated
+    # objects are accessed by calculating their offset using the header file
+    # definition.  However, Java allows symbolic access to per-object fields,
+    # so need to show them in the output.
     INSTANCE_DATA = 'I'
 
     UNDEFINED = 'U'
@@ -52,6 +73,9 @@ class Symbol(object):
     REF_DATA = 'F'
     REF_CODE = 'R'
     REF_INSTANCE_DATA = 'J'
+
+    DEF_SYMTYPES = set((CLASS, DATA, CODE, INSTANCE_DATA))
+    REF_SYMTYPES = set((REF_CLASS, REF_DATA, REF_CODE, REF_INSTANCE_DATA))
 
     def __init__(self, value, symtype, name, expanded_name=None):
         self.value = value
@@ -112,10 +136,11 @@ def _FieldInfo_dump(self):
     else:
         symtype = Symbol.INSTANCE_DATA
     return Symbol(size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
-                  visibility(symtype, self.access_flags), 
+                  visibility(symtype, self.access_flags),
                   "%s.%s" % (str(self.class_file.this_class),
                              str(self.class_file.constants[self.name_index - 1])))
 FieldInfo.dump = _FieldInfo_dump
+
 
 def _MethodInfo_dump(self):
     # Find the Code attribute
@@ -127,7 +152,7 @@ def _MethodInfo_dump(self):
             size = len(attr.code)
             break
     results = [Symbol(size,
-                      visibility(Symbol.CODE, self.access_flags), 
+                      visibility(Symbol.CODE, self.access_flags),
                       "%s.%s" % (str(self.class_file.this_class),
                                  str(self.class_file.constants[self.name_index - 1])))]
     if codeattr is not None:
@@ -221,6 +246,7 @@ def _ClassFile_dump(self):
 ClassFile.dump = _ClassFile_dump
 
 
+# Filters
 def resolve(symlist):
     """Remove duplicate symbol info and resolve internal references"""
     seen = set()
@@ -262,17 +288,151 @@ def resolve(symlist):
     return resolved
 
 
+def remove_defined(symlist):
+    return [sym for sym in symlist if sym.symtype.upper() not in Symbol.DEF_SYMTYPES]
+
+
+def remove_undefined(symlist):
+    return [sym for sym in symlist if sym.symtype.upper() in Symbol.DEF_SYMTYPES]
+
+
+def remove_undefined(symlist):
+    return [sym for sym in symlist if sym.symtype.upper() in Symbol.DEF_SYMTYPES]
+
+
+def remove_private(symlist):
+    return [sym for sym in symlist if sym.symtype.isupper()]
+
+
+# Sort functions
+def alphabetic_sort(symlist):
+    return sorted(symlist, key=lambda x: x.name)
+
+
+def numeric_sort(symlist):
+    return sorted(symlist, key=lambda x: x.value)
+
+
+def noop_sort(symlist):
+    return symlist
+
+
+def reverse_sort(symlist):
+    symlist.reverse()
+    return symlist
+
+
+# Display functions
+def normal_display(jarfile, filename, sym, current):
+    return str(sym)
+
+
+def prepend_filename(jarfile, filename, sym, current):
+    if jarfile is None:
+        return "%s:%s" % (filename, current)
+    else:
+        return "%s:%s:%s" % (jarfile, filename, current)
+
+
+def name_only(jarfile, filename, sym, current):
+    return "%s" % sym.name
+
+
+class NMOpts(object):
+    # short option, long option, help messsage, filter function, sort function, display function
+    OPT_INFO = (("h", "help", "show this help", None, None, None),
+                # Sort options
+                ("p", "sort-natural", "Don't sort; display in order encountered (default)", None, noop_sort, None),
+                ("n", "sort-numeric", "Sort symbols numerically", None, numeric_sort, None),
+                ("r", "sort-reverse", "Sort in reverse order", None, reverse_sort, None),
+                ("a", "sort-alphabetic", "Sort alphabetically", None, alphabetic_sort, None),
+                # Filter options
+                ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
+                ("U", "no-undefined", "Don't display undefined symbols", remove_undefined, None, None),
+                ("g", "no-private", "Don't display private symbols", remove_private, None, None),
+                # Display options
+                ("A", "include-path", "Write the pathname on each line", None, None, prepend_filename),
+                ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
+                ("f", "flatten", "Display the symbol table of a jar file flat (as one file not separate modules)", None, None, None),  # @@@
+                )
+    SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
+    LONG_OPTS = dict([("--%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
+    ALL_OPTS = dict(SHORT_OPTS.items() + LONG_OPTS.items())
+
+    def usage(self, err):
+        """Print usage message"""
+        print >> sys.stderr, self.message
+        print >> sys.stderr, "Options:"
+        for optinfo in self.OPT_INFO:
+            print >> sys.stderr, "   -%s/--%-16s : %s" % (optinfo[0], optinfo[1], optinfo[2])
+        sys.exit(err)
+
+    def __init__(self, message):
+        self.message = message
+        self.filters = [resolve]
+        self.sorts = []
+        self.displays = [normal_display]
+
+    def getopts(self, argv):
+        try:
+            opts, args = getopt.getopt(argv,
+                                       "".join([optinfo[0] for optinfo in self.OPT_INFO]),
+                                       [optinfo[1] for optinfo in self.OPT_INFO])
+        except getopt.GetoptError:
+            self.usage(2)
+        for opt, arg in opts:
+            if opt in ("-h", "--help"):
+                self.usage(0)
+            elif opt in ("-p", "--sort-natural"):
+                self.sorts = []
+            elif opt in self.ALL_OPTS:
+                optinfo = self.ALL_OPTS[opt]
+                if optinfo[3] is not None:
+                    self.filters.append(optinfo[3])
+                if optinfo[4] is not None:
+                    self.sorts.append(optinfo[4])
+                if optinfo[5] is not None:
+                    self.displays.append(optinfo[5])
+            else:
+                print >> sys.stderr, "Unknown option %s" % opt
+                self.usage(1)
+        return args
+
+    def process(self, symlist):
+        # Apply filters in order
+        for filter in self.filters:
+            symlist = filter(symlist)
+        # Apply sorts in order
+        for sortfn in self.sorts:
+            symlist = sortfn(symlist)
+        return symlist
+
+    def display(self, jarfile, filename, sym):
+        # Apply display functions in order
+        result = None
+        for dispfn in self.displays:
+            result = dispfn(jarfile, filename, sym, result)
+        return result
+
+
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
-        print >> sys.stderr, "No classes were specified on the command line."
+        print >> sys.stderr, "No classes were specified on the command line.  Try --help."
     else:
-        for arg in sys.argv[1:]:
-            f = open(arg, "rb")
-            in_data = f.read()
-            c = ClassFile(in_data)
-            f.close()
-            results = c.dump()
-            results = resolve(results)
-            for symbol in results:
-                print symbol
-
+        opts = NMOpts(__doc__)
+        args = opts.getopts(sys.argv[1:])
+        for arg in args:
+            if arg.endswith(".jar"):
+                jarfile = arg
+                clist = jar_classes(arg)
+            else:
+                jarfile = None
+                with open(arg, "rb") as f:
+                    clist = [(arg, ClassFile(f.read()))]
+            for filename, c in clist:
+                if jarfile is not None and prepend_filename not in opts.displays:
+                    print "\n%s(%s):" % (jarfile, filename)
+                results = c.dump()
+                results = opts.process(results)
+                for symbol in results:
+                    print opts.display(jarfile, filename, symbol)
