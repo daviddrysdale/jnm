@@ -432,8 +432,11 @@ class FieldInfo(ItemInfo):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
     def dump(self):
-        return ("%s %s %s;\n  Signature: %s\n\n" %
-                (access_description(self.access_flags),
+        access_str = access_description(self.access_flags)
+        if len(access_str) > 0:
+            access_str = access_str + " "
+        return ("%s%s %s;\n  Signature: %s\n\n" %
+                (access_str,
                  demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
                  str(self.class_file.constants[self.name_index - 1]),
                  str(self.class_file.constants[self.descriptor_index - 1])))
@@ -444,18 +447,21 @@ class MethodInfo(ItemInfo):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
     def dump(self):
+        access_str = access_description(self.access_flags)
+        if len(access_str) > 0:
+            access_str = access_str + " "
         params, return_type = demangle_method_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))
         method_name = str(self.class_file.constants[self.name_index - 1])
         if method_name == "<init>":
-            result = ("%s %s(%s);\n" %
-                      (access_description(self.access_flags),
+            result = ("%s%s(%s);\n" %
+                      (access_str,
                        str(self.class_file.this_class),
                        " ,".join(params)))
         elif method_name == "<clinit>":
-            result = "%s {};\n" % access_description(self.access_flags)
+            result = "%s{};\n" % access_str
         else:
-            result = ("%s %s %s(%s);\n" %
-                      (access_description(self.access_flags),
+            result = ("%s%s %s(%s);\n" %
+                      (access_str,
                        return_type,
                        method_name,
                        " ,".join(params)))
@@ -1485,12 +1491,12 @@ class ClassFile(object):
         result = ""
         if self.sourcefile_attribute is not None:
             result += 'Compiled from "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
-        result += (u"%s class %s extends %s" %
-                  (access_description(self.access_flags & ~SYNCHRONIZED),
-                   fqcn(str(self.this_class)),
-                   fqcn(str(self.super_class))))
+        access_str = access_description(self.access_flags & ~SYNCHRONIZED)
+        if len(access_str) > 0:
+            access_str = access_str + " "
+        result += (u"%sclass %s extends %s" % (access_str, fqcn(str(self.this_class)), fqcn(str(self.super_class))))
         if self.interfaces:
-            result += " implements " + ", ".join([str(interf) for interf in self.interfaces])
+            result += " implements " + ", ".join([fqcn(str(interf)) for interf in self.interfaces])
         result += "\n"
         if self.sourcefile_attribute is not None:
             result += '  SourceFile: "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
@@ -1502,6 +1508,7 @@ class ClassFile(object):
         result += self._dump_fields()
         result += self._dump_methods()
         result += self._dump_attributes(self.attributes)
+        result += u"}\n"
         return result
 
     def _dump_constants(self):
