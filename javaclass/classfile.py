@@ -95,13 +95,6 @@ def has_flags(flags, desired):
     return (flags & desired_flags) == desired_flags
 
 
-def enquote(s):
-    if s.find(">") != -1:
-        return '"%s"' % s
-    else:
-        return s
-
-
 # Constant information.
 class ConstantInfo(object):
     TAG = -1
@@ -186,8 +179,8 @@ class NameAndTypeInfo(ConstantInfo):
         return unicode(self.class_file.constants[self.name_index - 1])
 
     def __str__(self):
-        return ("%s:%s" % (enquote(str(self.class_file.constants[self.name_index - 1])),
-                           enquote(str(self.class_file.constants[self.descriptor_index - 1]))))
+        return ("%s:%s" % (str(self.class_file.constants[self.name_index - 1]),
+                           str(self.class_file.constants[self.descriptor_index - 1])))
 
 
 class Utf8Info(ConstantInfo):
