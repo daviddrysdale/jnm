@@ -7,7 +7,11 @@ public class FieldTest {
     public FieldTestClass f = new FieldTestClass(b + e.a);
     public static FieldTestClass g;
     public static FieldTestClass h = new FieldTestClass(789);
-
+    private int b() {
+        // method with same name as field
+        return b;
+    }
+  
     public static void main(String[] args) {
         if (FieldTest.h != null && FieldTest.h.a == 789) {
             System.out.println("FieldTest.h.a correct: " + FieldTest.h.a);
