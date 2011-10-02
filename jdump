@@ -22,7 +22,7 @@ import sys
 import struct
 
 from javaclass.jvmspec import access_description, fqcn
-from javaclass.jvmspec import SYNCHRONIZED, STATIC, JAVA_BYTECODES
+from javaclass.jvmspec import SYNCHRONIZED, STATIC, JAVA_BYTECODES, ARRAY_TYPE_MAPPING
 from javaclass.jvmspec import demangle_method_descriptor
 from javaclass.jvmspec import demangle_field_descriptor
 from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
@@ -209,7 +209,10 @@ def _CodeAttributeInfo_dump(self, argcount):
                         name = name[len(str(self.class_file.this_class)) + 1:]
                     suffix += "%s %s" % (const.DUMP_NAME, name)
                 elif info_type == 'l':
-                    out_value = "%d" % value  # @@@
+                    if value in ARRAY_TYPE_MAPPING:
+                        out_value = ARRAY_TYPE_MAPPING[value]
+                    else:
+                        out_value = "unknown:%d" % value
                 elif info_type == 'o':
                     out_value = "%d" % (ii + value)
                 elif info_type == 'a':

@@ -33,6 +33,15 @@ DESCRIPTOR_JAVA_TYPE_MAPPING = {"B": "byte",
                                 "[": "<array>",  # special
                                 }
 
+# Map from array type descriptors to type names; JVMSpec 6.newarray
+ARRAY_TYPE_MAPPING = {4: "boolean",
+                      5: "char",
+                      6: "float",
+                      7: "double",
+                      8: "byte",
+                      9: "short",
+                      10: "int",
+                      11: "long"}
 
 # Java bytecodes; JVMSpec 6, 7
 # code: (mnemonic, number of following bytes, struct code for syntax of params, semantic indicator)
