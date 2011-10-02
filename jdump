@@ -269,8 +269,12 @@ ClassFile.dump = _ClassFile_dump
 
 
 if __name__ == "__main__":
-    f = open(sys.argv[1], "rb")
-    in_data = f.read()
-    c = ClassFile(in_data)
-    f.close()
-    print c.dump()
+    if len(sys.argv) <= 1:
+        print >> sys.stderr, "No classes were specified on the command line."
+    else:
+        for arg in sys.argv[1:]:
+            f = open(arg, "rb")
+            in_data = f.read()
+            c = ClassFile(in_data)
+            f.close()
+            print c.dump()
