@@ -117,7 +117,7 @@ class NameAndTypeUtils(object):
 
 
 def get_method_descriptor(s):
-    assert(s[0] == "(")
+    assert s[0] == "("
     params = []
     s = s[1:]
     while s[0] != ")":
@@ -163,7 +163,7 @@ def _get_base_type(s):
 def _get_object_type(s):
     if len(s) > 0:
         s_end = s.find(";")
-        assert(s_end != -1)
+        assert s_end != -1
         return s[:s_end], s[(s_end + 1):]
     else:
         return None, s
@@ -414,7 +414,7 @@ class ConstantValueAttributeInfo(AttributeInfo):
         self.class_file = class_file
         self.attribute_length = u4(data[0:4])
         self.constant_value_index = u2(data[4:6])
-        assert((4 + self.attribute_length) == 6)
+        assert (4 + self.attribute_length) == 6
         return data[(4 + self.attribute_length):]
 
     def get_value(self):
@@ -564,7 +564,7 @@ class VerificationTypeInfo(object):
     def init(self, data, class_file):
         self.class_file = class_file
         tag = u1(data[0:1])
-        assert(tag == self.tag)
+        assert tag == self.tag
         return data[1:]
 
     def serialize(self):
@@ -648,7 +648,7 @@ class StackMapFrame(object):
     def init(self, data, class_file):
         self.class_file = class_file
         frame_type = u1(data[0:1])
-        assert(frame_type == self.frame_type)
+        assert frame_type == self.frame_type
         return data[1:]
 
     def serialize(self):
@@ -844,7 +844,7 @@ class ElementValue(object):
     def init(self, data, class_file):
         self.class_file = class_file
         tag = chr(u1(data[0:1]))
-        assert(tag == self.tag)
+        assert tag == self.tag
         return data[1:]
 
     def serialize(self):
@@ -1315,4 +1315,4 @@ if __name__ == "__main__":
     c = ClassFile(in_data)
     f.close()
     out_data = c.serialize()
-    assert(in_data == out_data)
+    assert in_data == out_data

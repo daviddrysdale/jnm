@@ -153,16 +153,15 @@ def _CodeAttributeInfo_dump(self, argcount):
     ii = 0
     while ii < len(self.code):
         opcode = ord(self.code[ii])
-        if opcode not in jvmspec.BYTECODES:
-            raise Exception("Unknown opcode %d" % opcode)
+        assert opcode in jvmspec.BYTECODES, "Unknown opcode %d" % opcode
         op_name, op_size, struct_code, info_types = jvmspec.BYTECODES[opcode]
-        assert(len(struct_code) == len(info_types))
+        assert len(struct_code) == len(info_types)
         line = "   %d:\t%s" % (ii, op_name)
         if op_name == "tableswitch":
             # expect 0 byte pads to next 4-byte boundary
             num_zeros = (4 - ((ii + 1) % 4)) % 4
             args_offset = ii + 1 + num_zeros
-            assert(args_offset % 4 == 0)
+            assert (args_offset % 4) == 0
             default, low, high = struct.unpack(">iii",
                                                self.code[args_offset:args_offset + 12])
             num_offsets = high - low + 1
@@ -173,7 +172,7 @@ def _CodeAttributeInfo_dump(self, argcount):
             # expect 0 byte pads to next 4-byte boundary
             num_zeros = (4 - ((ii + 1) % 4)) % 4
             args_offset = ii + 1 + num_zeros
-            assert(args_offset % 4 == 0)
+            assert (args_offset % 4) == 0
             default, npairs = struct.unpack(">ii",
                                             self.code[args_offset:args_offset + 8])
             op_size = num_zeros + (2 + npairs) * 4
@@ -190,45 +189,43 @@ def _CodeAttributeInfo_dump(self, argcount):
                 op_size = 2
                 struct_code = "H"
                 info_types = "l"
-        if op_size is not None:
-            values = struct.unpack(">" + struct_code,
-                                   self.code[ii + 1: ii + 1 + op_size])
-            out_values = []
-            suffix = ""
-            for value, info_type in zip(values, info_types):
-                out_value = None
-                if info_type == "#":
-                    out_value = "%d" % value
-                elif info_type == 'c':
-                    out_value = "#%d" % value
-                    const = self.class_file.constants[value - 1]
-                    name = str(const)
-                    # If the name starts with "<thisclass>.", strip it
-                    if (not isinstance(const, StringInfo) and
-                        name.startswith(str(self.class_file.this_class) + ".")):
-                        name = name[len(str(self.class_file.this_class)) + 1:]
-                    suffix += "%s %s" % (const.DUMP_NAME, name)
-                elif info_type == 'l':
-                    if value in jvmspec.ARRAY_TYPE_MAPPING:
-                        out_value = jvmspec.ARRAY_TYPE_MAPPING[value]
-                    else:
-                        out_value = "unknown:%d" % value
-                elif info_type == 'o':
-                    out_value = "%d" % (ii + value)
-                elif info_type == 'a':
-                    out_value = "%d" % value
-                elif info_type == '0':
-                    assert(value == 0)
+        assert op_size is not None, "Unexpected unknown size for opcode %d" % opcode
+        values = struct.unpack(">" + struct_code,
+                               self.code[ii + 1: ii + 1 + op_size])
+        out_values = []
+        suffix = ""
+        for value, info_type in zip(values, info_types):
+            out_value = None
+            if info_type == "#":
+                out_value = "%d" % value
+            elif info_type == 'c':
+                out_value = "#%d" % value
+                const = self.class_file.constants[value - 1]
+                name = str(const)
+                # If the name starts with "<thisclass>.", strip it
+                if (not isinstance(const, StringInfo) and
+                    name.startswith(str(self.class_file.this_class) + ".")):
+                    name = name[len(str(self.class_file.this_class)) + 1:]
+                suffix += "%s %s" % (const.DUMP_NAME, name)
+            elif info_type == 'l':
+                if value in jvmspec.ARRAY_TYPE_MAPPING:
+                    out_value = jvmspec.ARRAY_TYPE_MAPPING[value]
                 else:
-                    raise Exception("Unknown info type %s" % info_type)
-                if out_value is not None:
-                    out_values.append(out_value)
-            if out_values:
-                line += "\t" + ", ".join(out_values)
-                if len(suffix) > 0:
-                    line += "; //" + suffix
-        else:
-            raise Exception("Unexpected unknown size for opcode %d" % opcode)
+                    out_value = "unknown:%d" % value
+            elif info_type == 'o':
+                out_value = "%d" % (ii + value)
+            elif info_type == 'a':
+                out_value = "%d" % value
+            elif info_type == '0':
+                assert value == 0
+            else:
+                raise Exception("Unknown info type %s" % info_type)
+            if out_value is not None:
+                out_values.append(out_value)
+        if out_values:
+            line += "\t" + ", ".join(out_values)
+            if len(suffix) > 0:
+                line += "; //" + suffix
         line += "\n"
         lines.append(line)
         ii += op_size + 1
