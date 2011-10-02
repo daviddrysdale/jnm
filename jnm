@@ -347,18 +347,17 @@ class NMOpts(object):
     # short option, long option, help messsage, filter function, sort function, display function
     OPT_INFO = (("h", "help", "show this help", None, None, None),
                 # Sort options
-                ("p", "sort-natural", "Don't sort; display in order encountered (default)", None, noop_sort, None),
-                ("n", "sort-numeric", "Sort symbols numerically", None, numeric_sort, None),
-                ("r", "sort-reverse", "Sort in reverse order", None, reverse_sort, None),
-                ("a", "sort-alphabetic", "Sort alphabetically", None, alphabetic_sort, None),
+                ("p", "no-sort", "Don't sort; display in order encountered (default)", None, noop_sort, None),
+                ("n", "numeric-sort", "Sort symbols numerically", None, numeric_sort, None),
+                ("r", "reverse-sort", "Sort in reverse order", None, reverse_sort, None),
+                ("a", "alpha-sort", "Sort alphabetically", None, alphabetic_sort, None),
                 # Filter options
                 ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
-                ("U", "no-undefined", "Don't display undefined symbols", remove_undefined, None, None),
-                ("g", "no-private", "Don't display private symbols", remove_private, None, None),
+                ("U", "defined-only", "Don't display undefined symbols", remove_undefined, None, None),
+                ("g", "extern-only", "Don't display external (non-private) symbols", remove_private, None, None),
                 # Display options
-                ("A", "include-path", "Write the pathname on each line", None, None, prepend_filename),
+                ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
                 ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
-                ("f", "flatten", "Display the symbol table of a jar file flat (as one file not separate modules)", None, None, None),  # @@@
                 )
     SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
     LONG_OPTS = dict([("--%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
