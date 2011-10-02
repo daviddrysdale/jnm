@@ -21,8 +21,8 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import struct
 
+from javaclass import jvmspec
 from javaclass.jvmspec import access_description, fqcn
-from javaclass.jvmspec import SYNCHRONIZED, STATIC, JAVA_BYTECODES, ARRAY_TYPE_MAPPING
 from javaclass.jvmspec import demangle_method_descriptor
 from javaclass.jvmspec import demangle_field_descriptor
 from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
@@ -138,7 +138,7 @@ def _MethodInfo_dump(self):
     for attr in self.attributes:
         if isinstance(attr, CodeAttributeInfo):
             argcount = len(params)
-            if (self.access_flags & STATIC) == 0:
+            if (self.access_flags & jvmspec.STATIC) == 0:
                 argcount += 1  # for 'this'
             result += attr.dump(argcount)
     result += "\n\n"
@@ -153,9 +153,9 @@ def _CodeAttributeInfo_dump(self, argcount):
     ii = 0
     while ii < len(self.code):
         opcode = ord(self.code[ii])
-        if opcode not in JAVA_BYTECODES:
+        if opcode not in jvmspec.BYTECODES:
             raise Exception("Unknown opcode %d" % opcode)
-        op_name, op_size, struct_code, info_types = JAVA_BYTECODES[opcode]
+        op_name, op_size, struct_code, info_types = jvmspec.BYTECODES[opcode]
         assert(len(struct_code) == len(info_types))
         line = "   %d:\t%s" % (ii, op_name)
         if op_name == "tableswitch":
@@ -209,8 +209,8 @@ def _CodeAttributeInfo_dump(self, argcount):
                         name = name[len(str(self.class_file.this_class)) + 1:]
                     suffix += "%s %s" % (const.DUMP_NAME, name)
                 elif info_type == 'l':
-                    if value in ARRAY_TYPE_MAPPING:
-                        out_value = ARRAY_TYPE_MAPPING[value]
+                    if value in jvmspec.ARRAY_TYPE_MAPPING:
+                        out_value = jvmspec.ARRAY_TYPE_MAPPING[value]
                     else:
                         out_value = "unknown:%d" % value
                 elif info_type == 'o':
@@ -241,7 +241,7 @@ def _ClassFile_dump(self):
     if self.sourcefile_attribute is not None:
         result += ('Compiled from "%s"\n' %
                    str(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
-    access_str = access_description(self.access_flags & ~SYNCHRONIZED)
+    access_str = access_description(self.access_flags & ~jvmspec.SYNCHRONIZED)
     if len(access_str) > 0:
         access_str = access_str + " "
     result += (u"%sclass %s extends %s" %

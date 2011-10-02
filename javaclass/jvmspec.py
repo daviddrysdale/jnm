@@ -21,17 +21,17 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # Map from Java field type descriptors to type names; JVMSpec 4.3.2
-DESCRIPTOR_JAVA_TYPE_MAPPING = {"B": "byte",
-                                "C": "char",
-                                "D": "double",
-                                "F": "float",
-                                "I": "int",
-                                "J": "long",
-                                "L": "<class>",  # special
-                                "S": "short",
-                                "Z": "boolean",
-                                "[": "<array>",  # special
-                                }
+DESCRIPTOR_TYPE_MAPPING = {"B": "byte",
+                           "C": "char",
+                           "D": "double",
+                           "F": "float",
+                           "I": "int",
+                           "J": "long",
+                           "L": "<class>",  # special
+                           "S": "short",
+                           "Z": "boolean",
+                           "[": "<array>",  # special
+                           }
 
 # Map from array type descriptors to type names; JVMSpec 6.newarray
 ARRAY_TYPE_MAPPING = {4: "boolean",
@@ -53,7 +53,7 @@ ARRAY_TYPE_MAPPING = {4: "boolean",
 #    o = offset
 #    a = array type
 #    0 = zero value
-JAVA_BYTECODES = {
+BYTECODES = {
     0: ("nop", 0, "", ""),
     1: ("aconst_null", 0, "", ""),
     2: ("iconst_m1", 0, "", ""),
@@ -333,8 +333,8 @@ def demangle_field_descriptor(s, void_allowed=False):
                 raise Exception("Failed to find end of classname")
             classname = fqcn(s[ii + 1:endpoint])
             return classname + dim * "[]", s[endpoint + 1:]
-        elif c in DESCRIPTOR_JAVA_TYPE_MAPPING:
-            return DESCRIPTOR_JAVA_TYPE_MAPPING[c] + dim * "[]", s[ii + 1:]
+        elif c in DESCRIPTOR_TYPE_MAPPING:
+            return DESCRIPTOR_TYPE_MAPPING[c] + dim * "[]", s[ii + 1:]
         else:
             raise Exception("Unknown descriptor code %s" % c)
         ii += 1
