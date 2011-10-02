@@ -178,7 +178,7 @@ def _get_array_type(s):
         return None, s
 
 
-def safe(s):
+def enquote(s):
     if s.find(">") != -1:
         return '"%s"' % s
     else:
@@ -258,8 +258,8 @@ class NameAndTypeInfo(ConstantInfo):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
     def __str__(self):
-        return ("%s:%s" % (safe(str(self.class_file.constants[self.name_index - 1])),
-                           safe(str(self.class_file.constants[self.descriptor_index - 1]))))
+        return ("%s:%s" % (enquote(str(self.class_file.constants[self.name_index - 1])),
+                           enquote(str(self.class_file.constants[self.descriptor_index - 1]))))
 
 
 class Utf8Info(ConstantInfo):

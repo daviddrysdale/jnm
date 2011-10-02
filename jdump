@@ -124,7 +124,7 @@ def _MethodInfo_dump(self):
         result = ("%s%s(%s);\n" %
                   (access_str,
                    str(self.class_file.this_class),
-                   " ,".join(params)))
+                   ", ".join(params)))
     elif method_name == "<clinit>":
         result = "%s{};\n" % access_str
     else:
@@ -208,7 +208,6 @@ def _CodeAttributeInfo_dump(self, argcount):
                         name.startswith(str(self.class_file.this_class) + ".")):
                         name = name[len(str(self.class_file.this_class)) + 1:]
                     suffix += "%s %s" % (const.DUMP_NAME, name)
-                    # @@@ append on comment
                 elif info_type == 'l':
                     out_value = "%d" % value  # @@@
                 elif info_type == 'o':
