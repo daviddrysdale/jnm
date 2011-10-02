@@ -1,14 +1,12 @@
 TEST_JAVA_FILES = $(shell find tests -name \*.java)
-TEST_CLASS_FILES = $(TEST_JAVA_FILES:.java=.class)
-TEST_JAVAP_FILES = $(TEST_JAVA_FILES:.java=.javap)
-TEST_JDUMP_FILES = $(TEST_JAVA_FILES:.java=.jdump)
 
-test: testclasses testjar
+TEST_CLASS_FILES = $(subst tests/,bin/,$(TEST_JAVA_FILES:.java=.class))
+TEST_JAVAP_FILES = $(subst tests/,javap.out/,$(TEST_JAVA_FILES:.java=.dis))
+TEST_JDUMP_FILES = $(subst tests/,jdump.out/,$(TEST_JAVA_FILES:.java=.dis))
 
-test.jar: $(TEST_CLASS_FILES)
-	jar -cf $@ $^
+test: testclasses testjar testjdump
 
-testclasses: $(TEST_CLASS_FILES)
+testclasses: bin $(TEST_CLASS_FILES)
 	@list='$(TEST_CLASS_FILES)'; for cfile in $$list; do \
 	  python javaclass/classfile.py $$cfile; \
 	done
@@ -16,19 +14,36 @@ testclasses: $(TEST_CLASS_FILES)
 testjar: test.jar
 	python javaclass/jarfile.py $<
 
-%.class: %.java
-	javac $(TEST_JAVA_FILES)
+test.jar: $(TEST_CLASS_FILES)
+	jar -cf $@ $^
 
-testjdump: $(TEST_JAVAP_FILES) $(TEST_JDUMP_FILES)
+testjdump: javap.out $(TEST_JAVAP_FILES) jdump.out $(TEST_JDUMP_FILES)
 
-%.javap: %.class
-	javap -private -s -verbose -classpath tests $* > $@
 
-%.jdump: %.class
+bin/%.class: tests/%.java
+	javac -d bin $(TEST_JAVA_FILES)
+
+javap.out/%.dis: bin/%.class
+	javap -private -s -verbose -classpath bin $* > $@
+
+jdump.out/%.dis: bin/%.class
 	jdump $< > $@
+
+bin:
+	mkdir $@
+	mkdir $@/testpackage
+	mkdir $@/testpackage/subpackage
+javap.out:
+	mkdir $@
+	mkdir $@/testpackage
+	mkdir $@/testpackage/subpackage
+jdump.out:
+	mkdir $@
+	mkdir $@/testpackage
+	mkdir $@/testpackage/subpackage
 
 clean:
 	rm -rf build
 	rm -f test.jar
 	rm -f javaclass/*.pyc javaclass/*.py,cover
-	rm -f $(TEST_CLASS_FILES) $(TEST_JAVAP_FILES) $(TEST_JDUMP_FILES)
+	rm -rf bin jdump.out javap.out

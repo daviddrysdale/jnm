@@ -1,3 +1,6 @@
 *.pyc
 build
 test.jar
+bin
+jdump.out
+javap.out
