@@ -19,7 +19,7 @@ You should have received a copy of the GNU Lesser General Public License along
 with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import sys
-
+import struct
 
 from javaclass import jvmspec
 from javaclass.jvmspec import fqcn
@@ -34,14 +34,53 @@ from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
                                  LongInfo, DoubleInfo, FieldInfo, MethodInfo,
                                  CodeAttributeInfo, ClassFile)
 
-# Type characters; lowercase for local (=private), uppercase for external (protected/public)
-T_STATIC_DATA_INITIALIZED ='D'
-T_STATIC_DATA_UNINITIALIZED = 'B'
-T_CODE = 'T'
-# Instance data has no equivalent in C -- fields in dynamically allocated objects are accessed
-# by calculating their offset using the header file definition.  However, Java allows symbolic
-# access to per-object fields, so need to show them in the output.
-T_INSTANCE_DATA = 'I'
+class Symbol(object):
+    """Class describing a symbol or symbol reference"""
+
+    # Type characters; lowercase for local (=private), uppercase for external (protected/public)
+    CLASS = "C"
+    DATA ='D'
+    CODE = 'T'
+    # Instance data has no equivalent in C -- fields in dynamically allocated objects are accessed
+    # by calculating their offset using the header file definition.  However, Java allows symbolic
+    # access to per-object fields, so need to show them in the output.
+    INSTANCE_DATA = 'I'
+
+    UNDEFINED = 'U'
+    # References in code to other data/code.
+    REF_CLASS = 'K'
+    REF_DATA = 'F'
+    REF_CODE = 'R'
+    REF_INSTANCE_DATA = 'J'
+
+    def __init__(self, value, symtype, name, expanded_name=None):
+        self.value = value
+        self.symtype = symtype
+        self.name = name
+        if expanded_name is not None:
+            self.expanded_name = expanded_name
+        else:
+            self.expanded_name = self.name
+
+    def __hash__(self):
+        return hash(self.value) ^ hash(self.symtype) ^ hash(self.name)
+
+    def __eq__(self, other):
+        if not isinstance(other, Symbol):
+            return False
+        return (self.value == other.value and
+                self.symtype == other.symtype and
+                self.name == other.name)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __str__(self):
+        if self.value is None:
+            return "         %s %s" % (self.symtype, self.name)
+        else:
+            return "%08x %s %s" % (self.value, self.symtype, self.name)
+
 
 def visibility(t_code, access_flags):
     if access_flags & jvmspec.PRIVATE:
@@ -49,42 +88,179 @@ def visibility(t_code, access_flags):
     else:
         return t_code.upper()
 
-# We don't need no stinking Visitor pattern
 
+def findref(jcls, ii):
+    const = jcls.constants[ii - 1]
+    if isinstance(const, ClassInfo):
+        class_desc = str(const)
+        # Not interested in array types
+        # @@@@ array of class?
+        if class_desc[0] != "[":
+            return fqcn(str(const))
+    elif isinstance(const, FieldRefInfo):
+        return fqcn(str(const))
+    elif isinstance(const, MethodRefInfo):
+        return fqcn(str(const))
+    else:
+        return None
+
+
+# We don't need no stinking Visitor pattern
 def _FieldInfo_dump(self):
     if self.access_flags & jvmspec.STATIC:
-        symtype = T_STATIC_DATA_INITIALIZED  # @@@ initialized?
+        symtype = Symbol.DATA
     else:
-        symtype = T_INSTANCE_DATA
-    return (size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
-            visibility(symtype, self.access_flags), 
-            str(self.class_file.constants[self.name_index - 1]))
+        symtype = Symbol.INSTANCE_DATA
+    return Symbol(size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
+                  visibility(symtype, self.access_flags), 
+                  "%s.%s" % (str(self.class_file.this_class),
+                             str(self.class_file.constants[self.name_index - 1])))
 FieldInfo.dump = _FieldInfo_dump
 
 def _MethodInfo_dump(self):
     # Find the Code attribute
     size = None
+    codeattr = None
     for attr in self.attributes:
         if isinstance(attr, CodeAttributeInfo):
+            codeattr = attr
             size = len(attr.code)
             break
-    return (size, 
-            visibility(T_CODE, self.access_flags), 
-            str(self.class_file.constants[self.name_index - 1]))
+    results = [Symbol(size,
+                      visibility(Symbol.CODE, self.access_flags), 
+                      "%s.%s" % (str(self.class_file.this_class),
+                                 str(self.class_file.constants[self.name_index - 1])))]
+    if codeattr is not None:
+        results.extend(codeattr.dump())
+    return results
 MethodInfo.dump = _MethodInfo_dump
 
+
+def _CodeAttributeInfo_dump(self):
+    results = []
+    ii = 0
+    while ii < len(self.code):
+        opcode = ord(self.code[ii])
+        if opcode not in jvmspec.BYTECODES:
+            raise Exception("Unknown opcode %d" % opcode)
+        op_name, op_size, struct_code, info_types = jvmspec.BYTECODES[opcode]
+        assert len(struct_code) == len(info_types)
+        if op_name == "tableswitch":
+            # expect 0 byte pads to next 4-byte boundary
+            num_zeros = (4 - ((ii + 1) % 4)) % 4
+            args_offset = ii + 1 + num_zeros
+            assert (args_offset % 4) == 0
+            default, low, high = struct.unpack(">iii",
+                                               self.code[args_offset:args_offset + 12])
+            num_offsets = high - low + 1
+            op_size = num_zeros + (3 + num_offsets) * 4
+            struct_code = num_zeros * "B" + "iii" + num_offsets * "i"
+            info_types = num_zeros * "0" + "###" + num_offsets * "o"
+        elif op_name == "lookupswitch":
+            # expect 0 byte pads to next 4-byte boundary
+            num_zeros = (4 - ((ii + 1) % 4)) % 4
+            args_offset = ii + 1 + num_zeros
+            assert (args_offset % 4) == 0
+            default, npairs = struct.unpack(">ii",
+                                            self.code[args_offset:args_offset + 8])
+            op_size = num_zeros + (2 + npairs) * 4
+            struct_code = num_zeros * "B" + "ii" + npairs * "i"
+            info_types = num_zeros * "0" + "##" + npairs * "o"
+        elif op_name == "wide":
+            ii += 1  # move past "wide" opcode
+            opcode = ord(self.code[ii])
+            if opcode == 132:  # iinc
+                op_size = 4
+                struct_code = "HH"
+                info_types = "lc"
+            else:  # *load, *store or ret
+                op_size = 2
+                struct_code = "H"
+                info_types = "l"
+        assert op_size is not None, "Unexpected unknown size for opcode %d" % opcode
+        values = struct.unpack(">" + struct_code,
+                               self.code[ii + 1: ii + 1 + op_size])
+        # Look for instructions that reference data or code
+        symtype = None
+        if op_name in ("anewarray", "checkcast", "instanceof", "multianewarray", "new"):
+            # reference to class, array or interface type
+            symtype = Symbol.REF_CLASS
+        elif op_name in ("ldc", "ldc_w"):
+            # reference to primitive constant, string literal or class
+            symtype = Symbol.REF_CLASS
+        elif op_name in ("invokeinterface", "invokespecial", "invokestatic", "invokevirtual"):
+            # reference to a method
+            symtype = Symbol.REF_CODE
+        elif op_name in ("getfield", "putfield"):
+            # reference to an instance field
+            symtype = Symbol.REF_DATA
+        elif op_name in ("getstatic", "putstatic"):
+            # reference to a static field
+            symtype = Symbol.REF_DATA
+        if symtype is not None:
+            assert info_types[0] == "c"
+            ref = findref(self.class_file, values[0])
+            if ref is not None:
+                results.append(Symbol(None, symtype, ref))
+        ii += op_size + 1
+    return results
+CodeAttributeInfo.dump = _CodeAttributeInfo_dump
+
+
 def _ClassFile_dump(self):
-    result = []
+    results = [Symbol(self.size, Symbol.CLASS, str(self.this_class))]
     for f in self.fields:
         f_info = f.dump()
         if f_info is not None:
-            result.append(f_info)
+            results.append(f_info)
     for m in self.methods:
         m_info = m.dump()
         if m_info is not None:
-            result.append(m_info)
-    return result
+            results.extend(m_info)
+    return results
 ClassFile.dump = _ClassFile_dump
+
+
+def resolve(symlist):
+    """Remove duplicate symbol info and resolve internal references"""
+    seen = set()
+    fields = {}
+    methods = {}
+    classes = {}
+    # Remove duplicates and track definitions
+    deduped = []
+    for syminfo in symlist:
+        if syminfo not in seen:
+            seen.add(syminfo)
+            deduped.append(syminfo)
+            if syminfo.symtype.upper() == Symbol.CLASS:
+                classes[syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.DATA:
+                fields[syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
+                fields[syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.CODE:
+                methods[syminfo.name] = syminfo
+
+    # Remove references where there is a matching definition
+    resolved = []
+    for syminfo in deduped:
+        if (syminfo.symtype.upper() == Symbol.REF_CLASS and
+            syminfo.name in classes):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_DATA and
+              syminfo.name in fields):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA and
+              syminfo.name in fields):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_CODE and
+              syminfo.name in methods):
+            pass
+        else:
+            resolved.append(syminfo)
+    return resolved
+
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
@@ -95,10 +271,8 @@ if __name__ == "__main__":
             in_data = f.read()
             c = ClassFile(in_data)
             f.close()
-            for (value, symtype, name) in c.dump():
-                if value is None:
-                    value = "        "
-                else:
-                    value = "%08x" % value
-                print "%s %s %s.%s" % (value, symtype, fqcn(str(c.this_class)), name)
+            results = c.dump()
+            results = resolve(results)
+            for symbol in results:
+                print symbol
 

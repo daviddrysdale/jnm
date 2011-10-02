@@ -1127,7 +1127,7 @@ class ClassFile(object):
         Process the given string 's', populating the object with the class
         file's details.
         """
-
+        self.size = len(s)
         self.attribute_class_to_index = None
         self.sourcefile_attribute = None
         magic = u4(s[0:])
