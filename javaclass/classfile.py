@@ -189,13 +189,9 @@ def safe(s):
 class ConstantInfo(object):
     TAG = -1
 
-    def dump(self):
-        return "<unknown %d>" % self.TAG
-
 
 class ClassInfo(ConstantInfo):
     TAG = 7
-    DUMP_NAME = "class"
 
     def init(self, data, class_file):
         self.class_file = class_file
@@ -207,12 +203,6 @@ class ClassInfo(ConstantInfo):
 
     def __str__(self):
         return str(self.class_file.constants[self.name_index - 1])
-
-    def dump(self):
-        return ("%s\t#%d;\t//  %s" %
-                (self.DUMP_NAME,
-                 self.name_index,
-                 str(self)))
 
 
 class RefInfo(ConstantInfo, NameAndTypeUtils):
@@ -226,22 +216,13 @@ class RefInfo(ConstantInfo, NameAndTypeUtils):
         return su2(self.class_index) + su2(self.name_and_type_index)
 
     def __str__(self):
-        return ("%s.%s" % 
+        return ("%s.%s" %
                 (str(self.class_file.constants[self.class_index - 1]),
                  str(self.class_file.constants[self.name_and_type_index - 1])))
-                 
-
-    def dump(self):
-        return ("%s\t#%d.#%d;\t//  %s" %
-                (self.DUMP_NAME,
-                 self.class_index,
-                 self.name_and_type_index,
-                 str(self)))
 
 
 class FieldRefInfo(RefInfo):
     TAG = 9
-    DUMP_NAME = "Field"
 
     def get_descriptor(self):
         return RefInfo.get_field_descriptor(self)
@@ -249,7 +230,6 @@ class FieldRefInfo(RefInfo):
 
 class MethodRefInfo(RefInfo):
     TAG = 10
-    DUMP_NAME = "Method"
 
     def get_descriptor(self):
         return RefInfo.get_method_descriptor(self)
@@ -257,12 +237,10 @@ class MethodRefInfo(RefInfo):
 
 class InterfaceMethodRefInfo(MethodRefInfo):
     TAG = 11
-    DUMP_NAME = "InterfaceMethod"
 
 
 class NameAndTypeInfo(ConstantInfo):
     TAG = 12
-    DUMP_NAME = "NameAndType"
 
     def init(self, data, class_file):
         self.class_file = class_file
@@ -283,17 +261,9 @@ class NameAndTypeInfo(ConstantInfo):
         return ("%s:%s" % (safe(str(self.class_file.constants[self.name_index - 1])),
                            safe(str(self.class_file.constants[self.descriptor_index - 1]))))
 
-    def dump(self):
-        return ("%s\t#%d:#%d;//  %s" %
-                (self.DUMP_NAME,
-                 self.name_index,
-                 self.descriptor_index,
-                 self))
-
 
 class Utf8Info(ConstantInfo):
     TAG = 1
-    DUMP_NAME = "Asciz"
 
     def init(self, data, class_file):
         self.class_file = class_file
@@ -313,13 +283,9 @@ class Utf8Info(ConstantInfo):
     def get_value(self):
         return str(self)
 
-    def dump(self):
-        return ("%s\t%s;" % (self.DUMP_NAME, str(self)))
-
 
 class StringInfo(ConstantInfo):
     TAG = 8
-    DUMP_NAME = "String"
 
     def init(self, data, class_file):
         self.class_file = class_file
@@ -338,12 +304,6 @@ class StringInfo(ConstantInfo):
     def get_value(self):
         return str(self)
 
-    def dump(self):
-        return ("%s\t#%d;\t//  %s" %
-                (self.DUMP_NAME,
-                 self.string_index,
-                 self))
-
 
 class SmallNumInfo(ConstantInfo):
     def init(self, data, class_file):
@@ -354,13 +314,9 @@ class SmallNumInfo(ConstantInfo):
     def serialize(self):
         return self.bytes
 
-    def dump(self):
-        return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
-
 
 class IntegerInfo(SmallNumInfo):
     TAG = 3
-    DUMP_NAME = "int"
 
     def get_value(self):
         return s4(self.bytes)
@@ -368,7 +324,6 @@ class IntegerInfo(SmallNumInfo):
 
 class FloatInfo(SmallNumInfo):
     TAG = 4
-    DUMP_NAME = "float"
 
     def get_value(self):
         return f4(self.bytes)
@@ -384,13 +339,9 @@ class LargeNumInfo(ConstantInfo):
     def serialize(self):
         return self.high_bytes + self.low_bytes
 
-    def dump(self):
-        return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
-
 
 class LongInfo(LargeNumInfo):
     TAG = 5
-    DUMP_NAME = "long"
 
     def get_value(self):
         return s8(self.high_bytes + self.low_bytes)
@@ -398,7 +349,6 @@ class LongInfo(LargeNumInfo):
 
 class DoubleInfo(LargeNumInfo):
     TAG = 6
-    DUMP_NAME = "double"
 
     def get_value(self):
         return f8(self.high_bytes + self.low_bytes)
@@ -431,50 +381,10 @@ class FieldInfo(ItemInfo):
     def get_descriptor(self):
         return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
 
-    def dump(self):
-        access_str = access_description(self.access_flags)
-        if len(access_str) > 0:
-            access_str = access_str + " "
-        return ("%s%s %s;\n  Signature: %s\n\n" %
-                (access_str,
-                 demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
-                 str(self.class_file.constants[self.name_index - 1]),
-                 str(self.class_file.constants[self.descriptor_index - 1])))
-
 
 class MethodInfo(ItemInfo):
     def get_descriptor(self):
         return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
-
-    def dump(self):
-        access_str = access_description(self.access_flags)
-        if len(access_str) > 0:
-            access_str = access_str + " "
-        params, return_type = demangle_method_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))
-        method_name = str(self.class_file.constants[self.name_index - 1])
-        if method_name == "<init>":
-            result = ("%s%s(%s);\n" %
-                      (access_str,
-                       str(self.class_file.this_class),
-                       " ,".join(params)))
-        elif method_name == "<clinit>":
-            result = "%s{};\n" % access_str
-        else:
-            result = ("%s%s %s(%s);\n" %
-                      (access_str,
-                       return_type,
-                       method_name,
-                       " ,".join(params)))
-        result += "  Signature: %s\n" % str(self.class_file.constants[self.descriptor_index - 1])
-        # Find the Code attribute
-        for attr in self.attributes:
-            if isinstance(attr, CodeAttributeInfo):
-                argcount = len(params)
-                if (self.access_flags & STATIC) == 0:
-                    argcount += 1  # for 'this'
-                result += attr.dump(argcount)
-        result += "\n\n"
-        return result
 
 
 class AttributeInfo(object):
@@ -541,92 +451,6 @@ class CodeAttributeInfo(AttributeInfo):
         od += "".join([e.serialize() for e in self.exception_table])
         od += self.class_file._serialize_attributes(self.attributes)
         return od
-
-    def dump(self, argcount):
-        intro = ("  Code:\n   Stack=%d, Locals=%d, Args_size=%d\n" %
-                  (self.max_stack, self.max_locals, argcount))
-        lines = []
-        ii = 0
-        while ii < len(self.code):
-            opcode = ord(self.code[ii])
-            if opcode not in JAVA_BYTECODES:
-                raise Exception("Unknown opcode %d" % opcode)
-            op_name, op_size, struct_code, info_types = JAVA_BYTECODES[opcode]
-            assert(len(struct_code) == len(info_types))
-            line = "   %d:\t%s" % (ii, op_name)
-            if op_name == "tableswitch":
-                # expect 0 byte pads to next 4-byte boundary
-                num_zeros = (4 - ((ii + 1) % 4)) % 4
-                args_offset = ii + 1 + num_zeros
-                assert(args_offset % 4 == 0)
-                default, low, high = struct.unpack(">iii", 
-                                                   self.code[args_offset:args_offset + 12])
-                num_offsets = high - low + 1
-                op_size = num_zeros + (3 + num_offsets) * 4
-                struct_code = num_zeros * "B" + "iii" + num_offsets * "i"
-                info_types = num_zeros * "0" + "###" + num_offsets * "o"
-            elif op_name == "lookupswitch":
-                # expect 0 byte pads to next 4-byte boundary
-                num_zeros = (4 - ((ii + 1) % 4)) % 4
-                args_offset = ii + 1 + num_zeros
-                assert(args_offset % 4 == 0)
-                default, npairs = struct.unpack(">ii", 
-                                                self.code[args_offset:args_offset + 8])
-                op_size = num_zeros + (2 + npairs) * 4
-                struct_code = num_zeros * "B" + "ii" + npairs * "i"
-                info_types = num_zeros * "0" + "##" + npairs * "o"
-            elif op_name == "wide":
-                ii += 1  # move past "wide" opcode
-                opcode = ord(self.code[ii])
-                if opcode == 132:  # iinc
-                    op_size = 4
-                    struct_code = "HH"
-                    info_types = "lc"
-                else:  # *load, *store or ret
-                    op_size = 2
-                    struct_code = "H"
-                    info_types = "l"
-            if op_size is not None:
-                values = struct.unpack(">" + struct_code,
-                                       self.code[ii + 1: ii + 1 + op_size])
-                out_values = []
-                suffix = ""
-                for value, info_type in zip(values, info_types):
-                    out_value = None
-                    if info_type == "#":
-                        out_value = "%d" % value
-                    elif info_type == 'c':
-                        out_value = "#%d" % value
-                        const = self.class_file.constants[value -1]
-                        name = str(const)
-                        # If the name starts with "<thisclass>.", strip it
-                        if (not isinstance(const, StringInfo) and 
-                            name.startswith(str(self.class_file.this_class) + ".")):
-                            name = name[len(str(self.class_file.this_class))+1:]
-                        suffix += "%s %s" % (const.DUMP_NAME, name)
-                        # @@@ append on comment
-                    elif info_type == 'l':
-                        out_value = "%d" % value  #@@@
-                    elif info_type == 'o':
-                        out_value = "%d" % (ii + value)
-                    elif info_type == 'a':
-                        out_value = "%d" % value
-                    elif info_type == '0':
-                        assert(value == 0)
-                    else:
-                        raise Exception("Unknown info type %s" % info_type)
-                    if out_value is not None:
-                        out_values.append(out_value)
-                if out_values:
-                    line += "\t" + ", ".join(out_values)
-                    if len(suffix) > 0:
-                        line += "; //" + suffix
-            else:
-                raise Exception("Unexpected unknown size for opcode %d" % opcode)
-            line += "\n"
-            lines.append(line)
-            ii += op_size + 1
-        return intro + "".join(lines)
 
 
 class ExceptionsAttributeInfo(AttributeInfo):
@@ -1295,8 +1119,6 @@ ATTR_NAMES_TO_CLASS = {"SourceFile": SourceFileAttributeInfo,
                        # Java SE 1.5, class file >= 49.0, VMSpec v3  s4.7.20
                        "AnnotationDefault": AnnotationDefaultAttributeInfo}
 
-# Abstractions for the main structures.
-
 
 class ClassFile(object):
     "A class representing a Java class file."
@@ -1486,44 +1308,6 @@ class ClassFile(object):
         od = su2(len(self.methods))
         od += "".join([m.serialize() for m in self.methods])
         return od
-
-    def dump(self):
-        result = ""
-        if self.sourcefile_attribute is not None:
-            result += 'Compiled from "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
-        access_str = access_description(self.access_flags & ~SYNCHRONIZED)
-        if len(access_str) > 0:
-            access_str = access_str + " "
-        result += (u"%sclass %s extends %s" % (access_str, fqcn(str(self.this_class)), fqcn(str(self.super_class))))
-        if self.interfaces:
-            result += " implements " + ", ".join([fqcn(str(interf)) for interf in self.interfaces])
-        result += "\n"
-        if self.sourcefile_attribute is not None:
-            result += '  SourceFile: "%s"\n' % str(self.constants[self.sourcefile_attribute.sourcefile_index - 1])
-        result += u"  minor version: %s\n" % self.minorv
-        result += u"  major version: %s\n" % self.majorv
-
-        result += self._dump_constants()
-        result += u"\n{\n"
-        result += self._dump_fields()
-        result += self._dump_methods()
-        result += self._dump_attributes(self.attributes)
-        result += u"}\n"
-        return result
-
-    def _dump_constants(self):
-        result = u"  Constant pool:\n"
-        result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump()) for ii, c in enumerate(self.constants)])
-        return result
-
-    def _dump_fields(self):
-        return "".join([f.dump() for f in self.fields])
-
-    def _dump_methods(self):
-        return "".join([m.dump() for m in self.methods])
-
-    def _dump_attributes(self, attributes):
-        return ""
 
 
 if __name__ == "__main__":

@@ -1,7 +1,270 @@
 #!/usr/bin/env python
-import sys
+"""Java class file disassembly, from JVM Spec 3rd edition (draft)
 
-from javaclass.classfile import ClassFile
+Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
+Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
+Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+import sys
+import struct
+
+from javaclass.jvmspec import access_description, fqcn
+from javaclass.jvmspec import SYNCHRONIZED, STATIC, JAVA_BYTECODES
+from javaclass.jvmspec import demangle_method_descriptor
+from javaclass.jvmspec import demangle_field_descriptor
+from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
+                                 FieldRefInfo, MethodRefInfo,
+                                 InterfaceMethodRefInfo, NameAndTypeInfo,
+                                 Utf8Info, StringInfo, SmallNumInfo,
+                                 IntegerInfo, FloatInfo, LargeNumInfo,
+                                 LongInfo, DoubleInfo, FieldInfo, MethodInfo,
+                                 CodeAttributeInfo, ClassFile)
+
+
+# We don't need no stinking Visitor pattern
+ClassInfo.DUMP_NAME = "class"
+FieldRefInfo.DUMP_NAME = "Field"
+MethodRefInfo.DUMP_NAME = "Method"
+InterfaceMethodRefInfo.DUMP_NAME = "InterfaceMethod"
+NameAndTypeInfo.DUMP_NAME = "NameAndType"
+Utf8Info.DUMP_NAME = "Asciz"
+StringInfo.DUMP_NAME = "String"
+IntegerInfo.DUMP_NAME = "int"
+FloatInfo.DUMP_NAME = "float"
+LongInfo.DUMP_NAME = "long"
+DoubleInfo.DUMP_NAME = "double"
+
+
+def _ConstantInfo_dump(self):
+    return "<unknown %d>" % self.TAG
+ConstantInfo.dump = _ConstantInfo_dump
+
+
+def _ClassInfo_dump(self):
+    return ("%s\t#%d;\t//  %s" %
+            (self.DUMP_NAME,
+             self.name_index,
+             str(self)))
+ClassInfo.dump = _ClassInfo_dump
+
+
+def _RefInfo_dump(self):
+    return ("%s\t#%d.#%d;\t//  %s" %
+            (self.DUMP_NAME,
+             self.class_index,
+             self.name_and_type_index,
+             str(self)))
+RefInfo.dump = _RefInfo_dump
+
+
+def _NameAndTypeInfo_dump(self):
+    return ("%s\t#%d:#%d;//  %s" %
+            (self.DUMP_NAME,
+             self.name_index,
+             self.descriptor_index,
+             self))
+NameAndTypeInfo.dump = _NameAndTypeInfo_dump
+
+
+def _Utf8Info_dump(self):
+    return ("%s\t%s;" % (self.DUMP_NAME, str(self)))
+Utf8Info.dump = _Utf8Info_dump
+
+
+def _StringInfo_dump(self):
+    return ("%s\t#%d;\t//  %s" %
+            (self.DUMP_NAME,
+             self.string_index,
+             self))
+StringInfo.dump = _StringInfo_dump
+
+
+def _SmallNumInfo_dump(self):
+    return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+SmallNumInfo.dump = _SmallNumInfo_dump
+
+
+def _LargeNumInfo_dump(self):
+    return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+LargeNumInfo.dump = _LargeNumInfo_dump
+
+
+def _FieldInfo_dump(self):
+    access_str = access_description(self.access_flags)
+    if len(access_str) > 0:
+        access_str = access_str + " "
+    return ("%s%s %s;\n  Signature: %s\n\n" %
+            (access_str,
+             demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
+             str(self.class_file.constants[self.name_index - 1]),
+             str(self.class_file.constants[self.descriptor_index - 1])))
+FieldInfo.dump = _FieldInfo_dump
+
+
+def _MethodInfo_dump(self):
+    access_str = access_description(self.access_flags)
+    if len(access_str) > 0:
+        access_str = access_str + " "
+    params, return_type = demangle_method_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))
+    method_name = str(self.class_file.constants[self.name_index - 1])
+    if method_name == "<init>":
+        result = ("%s%s(%s);\n" %
+                  (access_str,
+                   str(self.class_file.this_class),
+                   " ,".join(params)))
+    elif method_name == "<clinit>":
+        result = "%s{};\n" % access_str
+    else:
+        result = ("%s%s %s(%s);\n" %
+                  (access_str,
+                   return_type,
+                   method_name,
+                   " ,".join(params)))
+    result += "  Signature: %s\n" % str(self.class_file.constants[self.descriptor_index - 1])
+    # Find the Code attribute
+    for attr in self.attributes:
+        if isinstance(attr, CodeAttributeInfo):
+            argcount = len(params)
+            if (self.access_flags & STATIC) == 0:
+                argcount += 1  # for 'this'
+            result += attr.dump(argcount)
+    result += "\n\n"
+    return result
+MethodInfo.dump = _MethodInfo_dump
+
+
+def _CodeAttributeInfo_dump(self, argcount):
+    intro = ("  Code:\n   Stack=%d, Locals=%d, Args_size=%d\n" %
+              (self.max_stack, self.max_locals, argcount))
+    lines = []
+    ii = 0
+    while ii < len(self.code):
+        opcode = ord(self.code[ii])
+        if opcode not in JAVA_BYTECODES:
+            raise Exception("Unknown opcode %d" % opcode)
+        op_name, op_size, struct_code, info_types = JAVA_BYTECODES[opcode]
+        assert(len(struct_code) == len(info_types))
+        line = "   %d:\t%s" % (ii, op_name)
+        if op_name == "tableswitch":
+            # expect 0 byte pads to next 4-byte boundary
+            num_zeros = (4 - ((ii + 1) % 4)) % 4
+            args_offset = ii + 1 + num_zeros
+            assert(args_offset % 4 == 0)
+            default, low, high = struct.unpack(">iii",
+                                               self.code[args_offset:args_offset + 12])
+            num_offsets = high - low + 1
+            op_size = num_zeros + (3 + num_offsets) * 4
+            struct_code = num_zeros * "B" + "iii" + num_offsets * "i"
+            info_types = num_zeros * "0" + "###" + num_offsets * "o"
+        elif op_name == "lookupswitch":
+            # expect 0 byte pads to next 4-byte boundary
+            num_zeros = (4 - ((ii + 1) % 4)) % 4
+            args_offset = ii + 1 + num_zeros
+            assert(args_offset % 4 == 0)
+            default, npairs = struct.unpack(">ii",
+                                            self.code[args_offset:args_offset + 8])
+            op_size = num_zeros + (2 + npairs) * 4
+            struct_code = num_zeros * "B" + "ii" + npairs * "i"
+            info_types = num_zeros * "0" + "##" + npairs * "o"
+        elif op_name == "wide":
+            ii += 1  # move past "wide" opcode
+            opcode = ord(self.code[ii])
+            if opcode == 132:  # iinc
+                op_size = 4
+                struct_code = "HH"
+                info_types = "lc"
+            else:  # *load, *store or ret
+                op_size = 2
+                struct_code = "H"
+                info_types = "l"
+        if op_size is not None:
+            values = struct.unpack(">" + struct_code,
+                                   self.code[ii + 1: ii + 1 + op_size])
+            out_values = []
+            suffix = ""
+            for value, info_type in zip(values, info_types):
+                out_value = None
+                if info_type == "#":
+                    out_value = "%d" % value
+                elif info_type == 'c':
+                    out_value = "#%d" % value
+                    const = self.class_file.constants[value - 1]
+                    name = str(const)
+                    # If the name starts with "<thisclass>.", strip it
+                    if (not isinstance(const, StringInfo) and
+                        name.startswith(str(self.class_file.this_class) + ".")):
+                        name = name[len(str(self.class_file.this_class)) + 1:]
+                    suffix += "%s %s" % (const.DUMP_NAME, name)
+                    # @@@ append on comment
+                elif info_type == 'l':
+                    out_value = "%d" % value  # @@@
+                elif info_type == 'o':
+                    out_value = "%d" % (ii + value)
+                elif info_type == 'a':
+                    out_value = "%d" % value
+                elif info_type == '0':
+                    assert(value == 0)
+                else:
+                    raise Exception("Unknown info type %s" % info_type)
+                if out_value is not None:
+                    out_values.append(out_value)
+            if out_values:
+                line += "\t" + ", ".join(out_values)
+                if len(suffix) > 0:
+                    line += "; //" + suffix
+        else:
+            raise Exception("Unexpected unknown size for opcode %d" % opcode)
+        line += "\n"
+        lines.append(line)
+        ii += op_size + 1
+    return intro + "".join(lines)
+CodeAttributeInfo.dump = _CodeAttributeInfo_dump
+
+
+def _ClassFile_dump(self):
+    result = ""
+    if self.sourcefile_attribute is not None:
+        result += ('Compiled from "%s"\n' %
+                   str(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
+    access_str = access_description(self.access_flags & ~SYNCHRONIZED)
+    if len(access_str) > 0:
+        access_str = access_str + " "
+    result += (u"%sclass %s extends %s" %
+               (access_str, fqcn(str(self.this_class)), fqcn(str(self.super_class))))
+    if self.interfaces:
+        result += (" implements " +
+                   ", ".join([fqcn(str(interf)) for interf in self.interfaces]))
+    result += "\n"
+    if self.sourcefile_attribute is not None:
+        result += ('  SourceFile: "%s"\n' %
+                   str(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
+    result += u"  minor version: %s\n" % self.minorv
+    result += u"  major version: %s\n" % self.majorv
+
+    result += u"  Constant pool:\n"
+    result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump())
+                        for ii, c in enumerate(self.constants)])
+    result += u"\n{\n"
+    result += "".join([f.dump() for f in self.fields])
+    result += "".join([m.dump() for m in self.methods])
+    # @@@ attributes
+    result += u"}\n"
+    return result
+ClassFile.dump = _ClassFile_dump
+
 
 if __name__ == "__main__":
     f = open(sys.argv[1], "rb")
