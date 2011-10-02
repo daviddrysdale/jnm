@@ -31,6 +31,21 @@ DESCRIPTOR_TYPE_MAPPING = {"B": "byte",
                            "S": "short",
                            "Z": "boolean",
                            "[": "<array>",  # special
+                           "V": "void",  # special; only allowed for return types
+                           }
+# Map from Java field type descriptors to size of corresponding type; JVMSpec 3.2, 4.3.2
+POINTER_SIZE = 8
+DESCRIPTOR_SIZE_MAPPING = {"B": 1,
+                           "C": 1,
+                           "D": 8,
+                           "F": 4,
+                           "I": 4,
+                           "J": 8,
+                           "L": POINTER_SIZE,
+                           "S": 2,
+                           "Z": 4,  # JVMSpec 3.2.4: ints used internally for booleans
+                           "[": 0,  # special
+                           "V": 0,  # special; only allowed for return types
                            }
 
 # Map from array type descriptors to type names; JVMSpec 6.newarray
@@ -311,6 +326,21 @@ def fqcn(s):
     # JVMSpec 4.2
     return s.replace("/", ".")
 
+
+def size_field_descriptor(s):
+    """Return the size in bytes of the field described by the given descriptor"""
+    ii = 0
+    while ii < len(s):
+        c = s[ii]
+        if c == "[":
+            pass
+        elif c in DESCRIPTOR_SIZE_MAPPING:
+            return DESCRIPTOR_SIZE_MAPPING[c]
+        else:
+            raise Exception("Unknown descriptor code %s" % c)
+        ii += 1
+    raise Exception("Failed to find single field in %s" % s)
+    
 
 def demangle_field_descriptor(s, void_allowed=False):
     """Convert field descriptor to a string describing the field.

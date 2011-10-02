@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+"""Java class file name list, from JVM Spec 3rd edition (draft)
+
+Copyright (C) 2004, 2005, 2006, 2011 Paul Boddie <paul@boddie.org.uk>
+Copyright (C) 2010 Braden Thomas <bradenthomas@me.com>
+Copyright (C) 2011 David Drysdale <dmd@lurklurk.org>
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation; either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+details.
+
+You should have received a copy of the GNU Lesser General Public License along
+with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+import sys
+
+
+from javaclass import jvmspec
+from javaclass.jvmspec import fqcn
+from javaclass.jvmspec import demangle_method_descriptor
+from javaclass.jvmspec import demangle_field_descriptor
+from javaclass.jvmspec import size_field_descriptor
+from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
+                                 FieldRefInfo, MethodRefInfo,
+                                 InterfaceMethodRefInfo, NameAndTypeInfo,
+                                 Utf8Info, StringInfo, SmallNumInfo,
+                                 IntegerInfo, FloatInfo, LargeNumInfo,
+                                 LongInfo, DoubleInfo, FieldInfo, MethodInfo,
+                                 CodeAttributeInfo, ClassFile)
+
+# Type characters; lowercase for local (=private), uppercase for external (protected/public)
+T_STATIC_DATA_INITIALIZED ='D'
+T_STATIC_DATA_UNINITIALIZED = 'B'
+T_CODE = 'T'
+# Instance data has no equivalent in C -- fields in dynamically allocated objects are accessed
+# by calculating their offset using the header file definition.  However, Java allows symbolic
+# access to per-object fields, so need to show them in the output.
+T_INSTANCE_DATA = 'I'
+
+def visibility(t_code, access_flags):
+    if access_flags & jvmspec.PRIVATE:
+        return t_code.lower()
+    else:
+        return t_code.upper()
+
+# We don't need no stinking Visitor pattern
+
+def _FieldInfo_dump(self):
+    if self.access_flags & jvmspec.STATIC:
+        symtype = T_STATIC_DATA_INITIALIZED  # @@@ initialized?
+    else:
+        symtype = T_INSTANCE_DATA
+    return (size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
+            visibility(symtype, self.access_flags), 
+            str(self.class_file.constants[self.name_index - 1]))
+FieldInfo.dump = _FieldInfo_dump
+
+def _MethodInfo_dump(self):
+    # Find the Code attribute
+    size = None
+    for attr in self.attributes:
+        if isinstance(attr, CodeAttributeInfo):
+            size = len(attr.code)
+            break
+    return (size, 
+            visibility(T_CODE, self.access_flags), 
+            str(self.class_file.constants[self.name_index - 1]))
+MethodInfo.dump = _MethodInfo_dump
+
+def _ClassFile_dump(self):
+    result = []
+    for f in self.fields:
+        f_info = f.dump()
+        if f_info is not None:
+            result.append(f_info)
+    for m in self.methods:
+        m_info = m.dump()
+        if m_info is not None:
+            result.append(m_info)
+    return result
+ClassFile.dump = _ClassFile_dump
+
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        print >> sys.stderr, "No classes were specified on the command line."
+    else:
+        for arg in sys.argv[1:]:
+            f = open(arg, "rb")
+            in_data = f.read()
+            c = ClassFile(in_data)
+            f.close()
+            for (value, symtype, name) in c.dump():
+                if value is None:
+                    value = "        "
+                else:
+                    value = "%08x" % value
+                print "%s %s %s.%s" % (value, symtype, fqcn(str(c.this_class)), name)
+
