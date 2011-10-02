@@ -215,8 +215,8 @@ JAVA_BYTECODES = {
     167: ("goto", 2, "h", "o"),
     168: ("jsr", 2, "h", "o"),
     169: ("ret", 1, "B", "l"),
-    170: ("tableswitch", None),  # variable number of arguments
-    171: ("lookupswitch", None),  # variable number of arguments
+    170: ("tableswitch", None, "", ""),  # variable number of arguments
+    171: ("lookupswitch", None, "", ""),  # variable number of arguments
     172: ("ireturn", 0, "", ""),
     173: ("lreturn", 0, "", ""),
     174: ("freturn", 0, "", ""),
@@ -241,7 +241,7 @@ JAVA_BYTECODES = {
     193: ("instanceof", 2, "H", "c"),
     194: ("monitorenter", 0, "", ""),
     195: ("monitorexit", 0, "", ""),
-    196: ("wide", None),  # 3 or 5 arguments, stack changes according to modified element
+    196: ("wide", None, "", ""),  # 3 or 5 arguments, stack changes according to modified element
     197: ("multianewarray", 3, "HB", "c#"),
     198: ("ifnull", 2, "h", "o"),
     199: ("ifnonnull", 2, "h", "o"),
