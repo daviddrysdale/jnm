@@ -105,6 +105,12 @@ class Symbol(object):
         else:
             return "%08x %s %s" % (self.value, self.symtype, self.name)
 
+    def demangled(self):
+        if self.value is None:
+            return "         %s %s" % (self.symtype, self.expanded_name)
+        else:
+            return "%08x %s %s" % (self.value, self.symtype, self.expanded_name)
+
 
 def visibility(t_code, access_flags):
     if access_flags & jvmspec.PRIVATE:
@@ -114,24 +120,29 @@ def visibility(t_code, access_flags):
 
 
 def findref(jcls, ii):
+    """Returns descriptor, class, name for referenced constant"""
     const = jcls.constants[ii - 1]
     if isinstance(const, ClassInfo):
         class_desc = str(const)
-        ii = 0
-        while class_desc[ii] == "[":
-            ii += 1
-        if class_desc[ii] != "L":
-            # Not interested in arrays of primitive types
-            return None
+        if class_desc[0] != "[":
+            # Plain old class name
+            return None, fqcn(class_desc), None
         else:
-            # Object or array of objects
-            return fqcn(class_desc)
+            ii = 0
+            while class_desc[ii] == "[":
+                ii += 1
+            if class_desc[ii] != "L":
+                # Not interested in arrays of primitive types
+                return None, None, None
+            else:
+                # Array of objects
+                return None, fqcn(class_desc), None
     elif isinstance(const, FieldRefInfo):
-        return fqcn(str(const))
+        return const.get_descriptor(), fqcn(str(const.get_class())), const.get_name()
     elif isinstance(const, MethodRefInfo):
-        return fqcn(str(const))
+        return const.get_descriptor(), fqcn(str(const.get_class())), const.get_name()
     else:
-        return None
+        return None, None, None
 
 
 # We don't need no stinking Visitor pattern
@@ -140,10 +151,13 @@ def _FieldInfo_dump(self):
         symtype = Symbol.DATA
     else:
         symtype = Symbol.INSTANCE_DATA
+    name = "%s.%s" % (fqcn(str(self.class_file.this_class)),
+                      str(self.class_file.constants[self.name_index - 1]))
+    descriptor = self.get_descriptor()
     return Symbol(size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
                   visibility(symtype, self.access_flags),
-                  "%s.%s" % (str(self.class_file.this_class),
-                             str(self.class_file.constants[self.name_index - 1])))
+                  "%s:%s" % (name, descriptor),
+                  "%s %s" % (jvmspec.demangle_field_descriptor(descriptor)[0], name))
 FieldInfo.dump = _FieldInfo_dump
 
 
@@ -156,10 +170,14 @@ def _MethodInfo_dump(self):
             codeattr = attr
             size = len(attr.code)
             break
+    name = "%s.%s" % (fqcn(str(self.class_file.this_class)),
+                      str(self.class_file.constants[self.name_index - 1]))
+    descriptor = self.get_descriptor()
+    params, return_type = jvmspec.demangle_method_descriptor(descriptor)
     results = [Symbol(size,
                       visibility(Symbol.CODE, self.access_flags),
-                      "%s.%s" % (str(self.class_file.this_class),
-                                 str(self.class_file.constants[self.name_index - 1])))]
+                      "%s:%s" % (name, self.get_descriptor()),
+                      "%s %s(%s)" % (return_type, name, ", ".join(params)))]
     if codeattr is not None:
         results.extend(codeattr.dump())
     return results
@@ -223,22 +241,33 @@ def _CodeAttributeInfo_dump(self):
             symtype = Symbol.REF_CODE
         elif op_name in ("getfield", "putfield"):
             # reference to an instance field
-            symtype = Symbol.REF_DATA
+            symtype = Symbol.REF_INSTANCE_DATA
         elif op_name in ("getstatic", "putstatic"):
             # reference to a static field
             symtype = Symbol.REF_DATA
         if symtype is not None:
             assert info_types[0] == "c"
-            ref = findref(self.class_file, values[0])
-            if ref is not None:
-                results.append(Symbol(None, symtype, ref))
+            descriptor, jcls, name = findref(self.class_file, values[0])
+            if jcls is not None:
+                if symtype == Symbol.REF_DATA or symtype == Symbol.REF_INSTANCE_DATA:
+                    expanded_descriptor = jvmspec.demangle_field_descriptor(descriptor)[0]
+                    results.append(Symbol(None, symtype,
+                                          "%s.%s:%s" % (jcls, name, descriptor),
+                                          "%s %s.%s" % (expanded_descriptor, jcls, name)))
+                elif symtype == Symbol.REF_CODE:
+                    params, return_type = jvmspec.demangle_method_descriptor(descriptor)
+                    results.append(Symbol(None, symtype,
+                                          "%s.%s:%s" % (jcls, name, descriptor),
+                                          "%s %s.%s(%s)" % (return_type, jcls, name, ", ".join(params))))
+                else:
+                    results.append(Symbol(None, symtype, jcls))
         ii += op_size + 1
     return results
 CodeAttributeInfo.dump = _CodeAttributeInfo_dump
 
 
 def _ClassFile_dump(self):
-    results = [Symbol(self.size, Symbol.CLASS, str(self.this_class))]
+    results = [Symbol(self.size, Symbol.CLASS, fqcn(str(self.this_class)))]
     for f in self.fields:
         f_info = f.dump()
         if f_info is not None:
@@ -343,6 +372,10 @@ def name_only(jarfile, filename, sym, current):
     return "%s" % sym.name
 
 
+def demangle(jarfile, filename, sym, current):
+    return sym.demangled()
+
+
 class NMOpts(object):
     # short option, long option, help messsage, filter function, sort function, display function
     OPT_INFO = (("h", "help", "show this help", None, None, None),
@@ -358,6 +391,7 @@ class NMOpts(object):
                 # Display options
                 ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
                 ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
+                ("C", "demangle", "Decode symbol names into user-visible names", None, None, demangle),
                 )
     SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
     LONG_OPTS = dict([("--%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
