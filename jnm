@@ -117,10 +117,15 @@ def findref(jcls, ii):
     const = jcls.constants[ii - 1]
     if isinstance(const, ClassInfo):
         class_desc = str(const)
-        # Not interested in array types
-        # @@@@ array of class?
-        if class_desc[0] != "[":
-            return fqcn(str(const))
+        ii = 0
+        while class_desc[ii] == "[":
+            ii += 1
+        if class_desc[ii] != "L":
+            # Not interested in arrays of primitive types
+            return None
+        else:
+            # Object or array of objects
+            return fqcn(class_desc)
     elif isinstance(const, FieldRefInfo):
         return fqcn(str(const))
     elif isinstance(const, MethodRefInfo):
