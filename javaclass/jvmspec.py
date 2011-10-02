@@ -340,7 +340,7 @@ def size_field_descriptor(s):
             raise Exception("Unknown descriptor code %s" % c)
         ii += 1
     raise Exception("Failed to find single field in %s" % s)
-    
+
 
 def demangle_field_descriptor(s, void_allowed=False):
     """Convert field descriptor to a string describing the field.
@@ -374,8 +374,7 @@ def demangle_field_descriptor(s, void_allowed=False):
 def demangle_method_descriptor(s):
     """Convert method descriptor to a pair of strings describing parameters and return type."""
     # JVMSpec 4.3.3
-    if s[0] != "(":
-        raise Exception("Method descriptor %s should start with (" % s)
+    assert s[0] == "(", "Method descriptor %s should start with (" % s
     s = s[1:]
     params = []
     while s[0] != ")" and len(s) > 0:
@@ -384,6 +383,5 @@ def demangle_method_descriptor(s):
     if (len(s) == 0 or s[0] != ")"):
         raise Exception("Method descriptor %s should include )" % s)
     return_type, s = demangle_field_descriptor(s[1:], void_allowed=True)
-    if len(s) > 0:
-        raise Exception("Unexpected extra text in %s" % s)
+    assert len(s) == 0, "Unexpected extra text in %s" % s
     return (params, return_type)
