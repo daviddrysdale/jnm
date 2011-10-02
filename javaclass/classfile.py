@@ -95,87 +95,6 @@ def has_flags(flags, desired):
     return (flags & desired_flags) == desired_flags
 
 
-class NameAndTypeUtils(object):
-    def get_field_descriptor(self):
-        if self.name_and_type_index != 0:
-            return self.class_file.constants[self.name_and_type_index - 1].get_field_descriptor()
-        else:
-            # Some name indexes are zero to indicate special conditions.
-            return None
-
-    def get_method_descriptor(self):
-        if self.name_and_type_index != 0:
-            return self.class_file.constants[self.name_and_type_index - 1].get_method_descriptor()
-        else:
-            # Some name indexes are zero to indicate special conditions.
-            return None
-
-    def get_class(self):
-        return self.class_file.constants[self.class_index - 1]
-
-# Symbol parsing.
-
-
-def get_method_descriptor(s):
-    assert s[0] == "("
-    params = []
-    s = s[1:]
-    while s[0] != ")":
-        parameter_descriptor, s = _get_parameter_descriptor(s)
-        params.append(parameter_descriptor)
-    if s[1] != "V":
-        return_type, s = _get_field_type(s[1:])
-    else:
-        return_type, s = None, s[1:]
-    return params, return_type
-
-
-def get_field_descriptor(s):
-    return _get_field_type(s)[0]
-
-
-def _get_parameter_descriptor(s):
-    return _get_field_type(s)
-
-
-def _get_component_type(s):
-    return _get_field_type(s)
-
-
-def _get_field_type(s):
-    base_type, s = _get_base_type(s)
-    object_type = None
-    array_type = None
-    if base_type == "L":
-        object_type, s = _get_object_type(s)
-    elif base_type == "[":
-        array_type, s = _get_array_type(s)
-    return (base_type, object_type, array_type), s
-
-
-def _get_base_type(s):
-    if len(s) > 0:
-        return s[0], s[1:]
-    else:
-        return None, s
-
-
-def _get_object_type(s):
-    if len(s) > 0:
-        s_end = s.find(";")
-        assert s_end != -1
-        return s[:s_end], s[(s_end + 1):]
-    else:
-        return None, s
-
-
-def _get_array_type(s):
-    if len(s) > 0:
-        return _get_component_type(s)
-    else:
-        return None, s
-
-
 def enquote(s):
     if s.find(">") != -1:
         return '"%s"' % s
@@ -203,7 +122,7 @@ class ClassInfo(ConstantInfo):
         return str(self.class_file.constants[self.name_index - 1])
 
 
-class RefInfo(ConstantInfo, NameAndTypeUtils):
+class RefInfo(ConstantInfo):
     def init(self, data, class_file):
         self.class_file = class_file
         self.class_index = u2(data[0:2])
@@ -212,6 +131,23 @@ class RefInfo(ConstantInfo, NameAndTypeUtils):
 
     def serialize(self):
         return su2(self.class_index) + su2(self.name_and_type_index)
+
+    def get_descriptor(self):
+        if self.name_and_type_index != 0:
+            return self.class_file.constants[self.name_and_type_index - 1].get_descriptor()
+        else:
+            # Some name indexes are zero to indicate special conditions.
+            return None
+
+    def get_class(self):
+        return self.class_file.constants[self.class_index - 1]
+
+    def get_name(self):
+        if self.name_and_type_index != 0:
+            return self.class_file.constants[self.name_and_type_index - 1].get_name()
+        else:
+            # Some name indexes are zero to indicate special conditions.
+            return None
 
     def __str__(self):
         return ("%s.%s" %
@@ -222,15 +158,9 @@ class RefInfo(ConstantInfo, NameAndTypeUtils):
 class FieldRefInfo(RefInfo):
     TAG = 9
 
-    def get_descriptor(self):
-        return RefInfo.get_field_descriptor(self)
-
 
 class MethodRefInfo(RefInfo):
     TAG = 10
-
-    def get_descriptor(self):
-        return RefInfo.get_method_descriptor(self)
 
 
 class InterfaceMethodRefInfo(MethodRefInfo):
@@ -249,11 +179,11 @@ class NameAndTypeInfo(ConstantInfo):
     def serialize(self):
         return su2(self.name_index) + su2(self.descriptor_index)
 
-    def get_field_descriptor(self):
-        return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+    def get_descriptor(self):
+        return unicode(self.class_file.constants[self.descriptor_index - 1])
 
-    def get_method_descriptor(self):
-        return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+    def get_name(self):
+        return unicode(self.class_file.constants[self.name_index - 1])
 
     def __str__(self):
         return ("%s:%s" % (enquote(str(self.class_file.constants[self.name_index - 1])),
@@ -374,15 +304,16 @@ class ItemInfo(object):
         od += self.class_file._serialize_attributes(self.attributes)
         return od
 
+    def get_descriptor(self):
+        return unicode(self.class_file.constants[self.descriptor_index - 1])
+
 
 class FieldInfo(ItemInfo):
-    def get_descriptor(self):
-        return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+    pass
 
 
 class MethodInfo(ItemInfo):
-    def get_descriptor(self):
-        return get_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+    pass
 
 
 class AttributeInfo(object):
