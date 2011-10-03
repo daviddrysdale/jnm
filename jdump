@@ -184,8 +184,8 @@ def _CodeAttributeInfo_dump(self, argcount):
             opcode = ord(self.code[ii])
             if opcode == 132:  # iinc
                 op_size = 4
-                struct_code = "HH"
-                info_types = "lc"
+                struct_code = "Hh"
+                info_types = "l#"
             else:  # *load, *store or ret
                 op_size = 2
                 struct_code = "H"
