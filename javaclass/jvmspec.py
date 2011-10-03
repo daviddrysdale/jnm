@@ -322,6 +322,12 @@ def access_description(flags):
     return " ".join(modifiers)
 
 
+def set_pointer_size(size):
+    global POINTER_SIZE
+    POINTER_SIZE = size
+    DESCRIPTOR_SIZE_MAPPING["L"] = POINTER_SIZE
+
+
 def fqcn(s):
     # JVMSpec 4.2
     return s.replace("/", ".")

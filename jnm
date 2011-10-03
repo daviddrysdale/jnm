@@ -392,6 +392,9 @@ class NMOpts(object):
                 ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
                 ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
                 ("C", "demangle", "Decode symbol names into user-visible names", None, None, demangle),
+                # Special options
+                ("", "m64", "Assume pointers are 64-bit (default)", None, None, None),
+                ("", "m32", "Assume pointers are 32-bit", None, None, None),
                 )
     SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
     LONG_OPTS = dict([("--%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
@@ -402,7 +405,10 @@ class NMOpts(object):
         print >> sys.stderr, self.message
         print >> sys.stderr, "Options:"
         for optinfo in self.OPT_INFO:
-            print >> sys.stderr, "   -%s/--%-16s : %s" % (optinfo[0], optinfo[1], optinfo[2])
+            if len(optinfo[0]) > 0:
+                print >> sys.stderr, "   -%s/--%-16s : %s" % (optinfo[0], optinfo[1], optinfo[2])
+            else:
+                print >> sys.stderr, "   --%-19s : %s" % (optinfo[1], optinfo[2])
         sys.exit(err)
 
     def __init__(self, message):
@@ -423,6 +429,10 @@ class NMOpts(object):
                 self.usage(0)
             elif opt in ("-p", "--sort-natural"):
                 self.sorts = []
+            elif opt == "--m32":
+                jvmspec.set_pointer_size(4)
+            elif opt == "--m64":
+                jvmspec.set_pointer_size(8)
             elif opt in self.ALL_OPTS:
                 optinfo = self.ALL_OPTS[opt]
                 if optinfo[3] is not None:
