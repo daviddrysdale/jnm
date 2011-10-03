@@ -319,7 +319,9 @@ class AttributeInfo(object):
     def serialize(self):
         return su4(self.attribute_length) + self.info
 
-# NOTE: Decode the different attribute formats.
+
+class UnknownAttributeInfo(AttributeInfo):
+    pass
 
 
 class SourceFileAttributeInfo(AttributeInfo):
@@ -1134,7 +1136,7 @@ class ClassFile(object):
         if constant_name in ATTR_NAMES_TO_CLASS:
             attribute = ATTR_NAMES_TO_CLASS[constant_name]()
         else:
-            raise UnknownAttribute(constant_name)
+            attribute = UnknownAttributeInfo()
         s = attribute.init(s[2:], self)
         return attribute, s
 

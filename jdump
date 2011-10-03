@@ -257,7 +257,7 @@ def _ClassFile_dump(self):
     if self.constants is not None:
         result += u"  Constant pool:\n"
         result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump())
-                            for ii, c in enumerate(self.constants)])
+                            for ii, c in enumerate(self.constants) if c is not None])
     result += u"\n{\n"
     result += "".join([f.dump() for f in self.fields])
     result += "".join([m.dump() for m in self.methods])
