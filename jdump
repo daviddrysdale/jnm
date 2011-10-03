@@ -32,6 +32,7 @@ from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
                                  IntegerInfo, FloatInfo, LargeNumInfo,
                                  LongInfo, DoubleInfo, FieldInfo, MethodInfo,
                                  CodeAttributeInfo, ClassFile)
+from javaclass.jarfile import jar_classes
 
 
 # We don't need no stinking Visitor pattern
@@ -271,8 +272,13 @@ if __name__ == "__main__":
         print >> sys.stderr, "No classes were specified on the command line."
     else:
         for arg in sys.argv[1:]:
-            f = open(arg, "rb")
-            in_data = f.read()
-            c = ClassFile(in_data)
-            f.close()
-            print c.dump()
+            if arg.endswith(".jar"):
+                jarfile = arg
+                clist = jar_classes(arg)
+            else:
+                jarfile = None
+                with open(arg, "rb") as f:
+                    clist = [(arg, ClassFile(f.read()))]
+            for filename, c in clist:
+                print c.dump()
+
