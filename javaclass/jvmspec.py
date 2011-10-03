@@ -21,42 +21,42 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 # Map from Java field type descriptors to type names; JVMSpec 4.3.2
-DESCRIPTOR_TYPE_MAPPING = {"B": "byte",
-                           "C": "char",
-                           "D": "double",
-                           "F": "float",
-                           "I": "int",
-                           "J": "long",
-                           "L": "<class>",  # special
-                           "S": "short",
-                           "Z": "boolean",
-                           "[": "<array>",  # special
-                           "V": "void",  # special; only allowed for return types
+DESCRIPTOR_TYPE_MAPPING = {u"B": u"byte",
+                           u"C": u"char",
+                           u"D": u"double",
+                           u"F": u"float",
+                           u"I": u"int",
+                           u"J": u"long",
+                           u"L": u"<class>",  # special
+                           u"S": u"short",
+                           u"Z": u"boolean",
+                           u"[": u"<array>",  # special
+                           u"V": u"void",  # special; only allowed for return types
                            }
 # Map from Java field type descriptors to size of corresponding type; JVMSpec 3.2, 4.3.2
 POINTER_SIZE = 8
-DESCRIPTOR_SIZE_MAPPING = {"B": 1,
-                           "C": 1,
-                           "D": 8,
-                           "F": 4,
-                           "I": 4,
-                           "J": 8,
-                           "L": POINTER_SIZE,
-                           "S": 2,
-                           "Z": 4,  # JVMSpec 3.2.4: ints used internally for booleans
-                           "[": 0,  # special
-                           "V": 0,  # special; only allowed for return types
+DESCRIPTOR_SIZE_MAPPING = {u"B": 1,
+                           u"C": 1,
+                           u"D": 8,
+                           u"F": 4,
+                           u"I": 4,
+                           u"J": 8,
+                           u"L": POINTER_SIZE,
+                           u"S": 2,
+                           u"Z": 4,  # JVMSpec 3.2.4: ints used internally for booleans
+                           u"[": 0,  # special
+                           u"V": 0,  # special; only allowed for return types
                            }
 
 # Map from array type descriptors to type names; JVMSpec 6.newarray
-ARRAY_TYPE_MAPPING = {4: "boolean",
-                      5: "char",
-                      6: "float",
-                      7: "double",
-                      8: "byte",
-                      9: "short",
-                      10: "int",
-                      11: "long"}
+ARRAY_TYPE_MAPPING = {4: u"boolean",
+                      5: u"char",
+                      6: u"float",
+                      7: u"double",
+                      8: u"byte",
+                      9: u"short",
+                      10: u"int",
+                      11: u"long"}
 
 # Java bytecodes; JVMSpec 6, 7
 # code: (mnemonic, number of following bytes, struct code for syntax of params, semantic indicator)
@@ -69,212 +69,212 @@ ARRAY_TYPE_MAPPING = {4: "boolean",
 #    a = array type
 #    0 = zero value
 BYTECODES = {
-    0: ("nop", 0, "", ""),
-    1: ("aconst_null", 0, "", ""),
-    2: ("iconst_m1", 0, "", ""),
-    3: ("iconst_0", 0, "", ""),
-    4: ("iconst_1", 0, "", ""),
-    5: ("iconst_2", 0, "", ""),
-    6: ("iconst_3", 0, "", ""),
-    7: ("iconst_4", 0, "", ""),
-    8: ("iconst_5", 0, "", ""),
-    9: ("lconst_0", 0, "", ""),
-    10: ("lconst_1", 0, "", ""),
-    11: ("fconst_0", 0, "", ""),
-    12: ("fconst_1", 0, "", ""),
-    13: ("fconst_2", 0, "", ""),
-    14: ("dconst_0", 0, "", ""),
-    15: ("dconst_1", 0, "", ""),
-    16: ("bipush", 1, "b", "#"),
-    17: ("sipush", 2, "h", "#"),
-    18: ("ldc", 1, "B", "c"),
-    19: ("ldc_w", 2, "H", "c"),
-    20: ("ldc2_w", 2, "H", "c"),
-    21: ("iload", 1, "B", "l"),
-    22: ("lload", 1, "B", "l"),
-    23: ("fload", 1, "B", "l"),
-    24: ("dload", 1, "B", "l"),
-    25: ("aload", 1, "B", "l"),
-    26: ("iload_0", 0, "", ""),
-    27: ("iload_1", 0, "", ""),
-    28: ("iload_2", 0, "", ""),
-    29: ("iload_3", 0, "", ""),
-    30: ("lload_0", 0, "", ""),
-    31: ("lload_1", 0, "", ""),
-    32: ("lload_2", 0, "", ""),
-    33: ("lload_3", 0, "", ""),
-    34: ("fload_0", 0, "", ""),
-    35: ("fload_1", 0, "", ""),
-    36: ("fload_2", 0, "", ""),
-    37: ("fload_3", 0, "", ""),
-    38: ("dload_0", 0, "", ""),
-    39: ("dload_1", 0, "", ""),
-    40: ("dload_2", 0, "", ""),
-    41: ("dload_3", 0, "", ""),
-    42: ("aload_0", 0, "", ""),
-    43: ("aload_1", 0, "", ""),
-    44: ("aload_2", 0, "", ""),
-    45: ("aload_3", 0, "", ""),
-    46: ("iaload", 0, "", ""),
-    47: ("laload", 0, "", ""),
-    48: ("faload", 0, "", ""),
-    49: ("daload", 0, "", ""),
-    50: ("aaload", 0, "", ""),
-    51: ("baload", 0, "", ""),
-    52: ("caload", 0, "", ""),
-    53: ("saload", 0, "", ""),
-    54: ("istore", 1, "B", "l"),
-    55: ("lstore", 1, "B", "l"),
-    56: ("fstore", 1, "B", "l"),
-    57: ("dstore", 1, "B", "l"),
-    58: ("astore", 1, "B", "l"),
-    59: ("istore_0", 0, "", ""),
-    60: ("istore_1", 0, "", ""),
-    61: ("istore_2", 0, "", ""),
-    62: ("istore_3", 0, "", ""),
-    63: ("lstore_0", 0, "", ""),
-    64: ("lstore_1", 0, "", ""),
-    65: ("lstore_2", 0, "", ""),
-    66: ("lstore_3", 0, "", ""),
-    67: ("fstore_0", 0, "", ""),
-    68: ("fstore_1", 0, "", ""),
-    69: ("fstore_2", 0, "", ""),
-    70: ("fstore_3", 0, "", ""),
-    71: ("dstore_0", 0, "", ""),
-    72: ("dstore_1", 0, "", ""),
-    73: ("dstore_2", 0, "", ""),
-    74: ("dstore_3", 0, "", ""),
-    75: ("astore_0", 0, "", ""),
-    76: ("astore_1", 0, "", ""),
-    77: ("astore_2", 0, "", ""),
-    78: ("astore_3", 0, "", ""),
-    79: ("iastore", 0, "", ""),
-    80: ("lastore", 0, "", ""),
-    81: ("fastore", 0, "", ""),
-    82: ("dastore", 0, "", ""),
-    83: ("aastore", 0, "", ""),
-    84: ("bastore", 0, "", ""),
-    85: ("castore", 0, "", ""),
-    86: ("sastore", 0, "", ""),
-    87: ("pop", 0, "", ""),
-    88: ("pop2", 0, "", ""),
-    89: ("dup", 0, "", ""),
-    90: ("dup_x1", 0, "", ""),
-    91: ("dup_x2", 0, "", ""),
-    92: ("dup2", 0, "", ""),
-    93: ("dup2_x1", 0, "", ""),
-    94: ("dup2_x2", 0, "", ""),
-    95: ("swap", 0, "", ""),
-    96: ("iadd", 0, "", ""),
-    97: ("ladd", 0, "", ""),
-    98: ("fadd", 0, "", ""),
-    99: ("dadd", 0, "", ""),
-    100: ("isub", 0, "", ""),
-    101: ("lsub", 0, "", ""),
-    102: ("fsub", 0, "", ""),
-    103: ("dsub", 0, "", ""),
-    104: ("imul", 0, "", ""),
-    105: ("lmul", 0, "", ""),
-    106: ("fmul", 0, "", ""),
-    107: ("dmul", 0, "", ""),
-    108: ("idiv", 0, "", ""),
-    109: ("ldiv", 0, "", ""),
-    110: ("fdiv", 0, "", ""),
-    111: ("ddiv", 0, "", ""),
-    112: ("irem", 0, "", ""),
-    113: ("lrem", 0, "", ""),
-    114: ("frem", 0, "", ""),
-    115: ("drem", 0, "", ""),
-    116: ("ineg", 0, "", ""),
-    117: ("lneg", 0, "", ""),
-    118: ("fneg", 0, "", ""),
-    119: ("dneg", 0, "", ""),
-    120: ("ishl", 0, "", ""),
-    121: ("lshl", 0, "", ""),
-    122: ("ishr", 0, "", ""),
-    123: ("lshr", 0, "", ""),
-    124: ("iushr", 0, "", ""),
-    125: ("lushr", 0, "", ""),
-    126: ("iand", 0, "", ""),
-    127: ("land", 0, "", ""),
-    128: ("ior", 0, "", ""),
-    129: ("lor", 0, "", ""),
-    130: ("ixor", 0, "", ""),
-    131: ("lxor", 0, "", ""),
-    132: ("iinc", 2, "Bb", "l#"),
-    133: ("i2l", 0, "", ""),
-    134: ("i2f", 0, "", ""),
-    135: ("i2d", 0, "", ""),
-    136: ("l2i", 0, "", ""),
-    137: ("l2f", 0, "", ""),
-    138: ("l2d", 0, "", ""),
-    139: ("f2i", 0, "", ""),
-    140: ("f2l", 0, "", ""),
-    141: ("f2d", 0, "", ""),
-    142: ("d2i", 0, "", ""),
-    143: ("d2l", 0, "", ""),
-    144: ("d2f", 0, "", ""),
-    145: ("i2b", 0, "", ""),
-    146: ("i2c", 0, "", ""),
-    147: ("i2s", 0, "", ""),
-    148: ("lcmp", 0, "", ""),
-    149: ("fcmpl", 0, "", ""),
-    150: ("fcmpg", 0, "", ""),
-    151: ("dcmpl", 0, "", ""),
-    152: ("dcmpg", 0, "", ""),
-    153: ("ifeq", 2, "h", "o"),
-    154: ("ifne", 2, "h", "o"),
-    155: ("iflt", 2, "h", "o"),
-    156: ("ifge", 2, "h", "o"),
-    157: ("ifgt", 2, "h", "o"),
-    158: ("ifle", 2, "h", "o"),
-    159: ("if_icmpeq", 2, "h", "o"),
-    160: ("if_icmpne", 2, "h", "o"),
-    161: ("if_icmplt", 2, "h", "o"),
-    162: ("if_icmpge", 2, "h", "o"),
-    163: ("if_icmpgt", 2, "h", "o"),
-    164: ("if_icmple", 2, "h", "o"),
-    165: ("if_acmpeq", 2, "h", "o"),
-    166: ("if_acmpne", 2, "h", "o"),
-    167: ("goto", 2, "h", "o"),
-    168: ("jsr", 2, "h", "o"),
-    169: ("ret", 1, "B", "l"),
-    170: ("tableswitch", None, "", ""),  # variable number of arguments
-    171: ("lookupswitch", None, "", ""),  # variable number of arguments
-    172: ("ireturn", 0, "", ""),
-    173: ("lreturn", 0, "", ""),
-    174: ("freturn", 0, "", ""),
-    175: ("dreturn", 0, "", ""),
-    176: ("areturn", 0, "", ""),
-    177: ("return", 0, "", ""),
-    178: ("getstatic", 2, "H", "c"),
-    179: ("putstatic", 2, "H", "c"),
-    180: ("getfield", 2, "H", "c"),
-    181: ("putfield", 2, "H", "c"),
-    182: ("invokevirtual", 2, "H", "c"),
-    183: ("invokespecial", 2, "H", "c"),
-    184: ("invokestatic", 2, "H", "c"),
-    185: ("invokeinterface", 4, "HBB", "c#0"),
+    0: (u"nop", 0, "", ""),
+    1: (u"aconst_null", 0, "", ""),
+    2: (u"iconst_m1", 0, "", ""),
+    3: (u"iconst_0", 0, "", ""),
+    4: (u"iconst_1", 0, "", ""),
+    5: (u"iconst_2", 0, "", ""),
+    6: (u"iconst_3", 0, "", ""),
+    7: (u"iconst_4", 0, "", ""),
+    8: (u"iconst_5", 0, "", ""),
+    9: (u"lconst_0", 0, "", ""),
+    10: (u"lconst_1", 0, "", ""),
+    11: (u"fconst_0", 0, "", ""),
+    12: (u"fconst_1", 0, "", ""),
+    13: (u"fconst_2", 0, "", ""),
+    14: (u"dconst_0", 0, "", ""),
+    15: (u"dconst_1", 0, "", ""),
+    16: (u"bipush", 1, "b", "#"),
+    17: (u"sipush", 2, "h", "#"),
+    18: (u"ldc", 1, "B", "c"),
+    19: (u"ldc_w", 2, "H", "c"),
+    20: (u"ldc2_w", 2, "H", "c"),
+    21: (u"iload", 1, "B", "l"),
+    22: (u"lload", 1, "B", "l"),
+    23: (u"fload", 1, "B", "l"),
+    24: (u"dload", 1, "B", "l"),
+    25: (u"aload", 1, "B", "l"),
+    26: (u"iload_0", 0, "", ""),
+    27: (u"iload_1", 0, "", ""),
+    28: (u"iload_2", 0, "", ""),
+    29: (u"iload_3", 0, "", ""),
+    30: (u"lload_0", 0, "", ""),
+    31: (u"lload_1", 0, "", ""),
+    32: (u"lload_2", 0, "", ""),
+    33: (u"lload_3", 0, "", ""),
+    34: (u"fload_0", 0, "", ""),
+    35: (u"fload_1", 0, "", ""),
+    36: (u"fload_2", 0, "", ""),
+    37: (u"fload_3", 0, "", ""),
+    38: (u"dload_0", 0, "", ""),
+    39: (u"dload_1", 0, "", ""),
+    40: (u"dload_2", 0, "", ""),
+    41: (u"dload_3", 0, "", ""),
+    42: (u"aload_0", 0, "", ""),
+    43: (u"aload_1", 0, "", ""),
+    44: (u"aload_2", 0, "", ""),
+    45: (u"aload_3", 0, "", ""),
+    46: (u"iaload", 0, "", ""),
+    47: (u"laload", 0, "", ""),
+    48: (u"faload", 0, "", ""),
+    49: (u"daload", 0, "", ""),
+    50: (u"aaload", 0, "", ""),
+    51: (u"baload", 0, "", ""),
+    52: (u"caload", 0, "", ""),
+    53: (u"saload", 0, "", ""),
+    54: (u"istore", 1, "B", "l"),
+    55: (u"lstore", 1, "B", "l"),
+    56: (u"fstore", 1, "B", "l"),
+    57: (u"dstore", 1, "B", "l"),
+    58: (u"astore", 1, "B", "l"),
+    59: (u"istore_0", 0, "", ""),
+    60: (u"istore_1", 0, "", ""),
+    61: (u"istore_2", 0, "", ""),
+    62: (u"istore_3", 0, "", ""),
+    63: (u"lstore_0", 0, "", ""),
+    64: (u"lstore_1", 0, "", ""),
+    65: (u"lstore_2", 0, "", ""),
+    66: (u"lstore_3", 0, "", ""),
+    67: (u"fstore_0", 0, "", ""),
+    68: (u"fstore_1", 0, "", ""),
+    69: (u"fstore_2", 0, "", ""),
+    70: (u"fstore_3", 0, "", ""),
+    71: (u"dstore_0", 0, "", ""),
+    72: (u"dstore_1", 0, "", ""),
+    73: (u"dstore_2", 0, "", ""),
+    74: (u"dstore_3", 0, "", ""),
+    75: (u"astore_0", 0, "", ""),
+    76: (u"astore_1", 0, "", ""),
+    77: (u"astore_2", 0, "", ""),
+    78: (u"astore_3", 0, "", ""),
+    79: (u"iastore", 0, "", ""),
+    80: (u"lastore", 0, "", ""),
+    81: (u"fastore", 0, "", ""),
+    82: (u"dastore", 0, "", ""),
+    83: (u"aastore", 0, "", ""),
+    84: (u"bastore", 0, "", ""),
+    85: (u"castore", 0, "", ""),
+    86: (u"sastore", 0, "", ""),
+    87: (u"pop", 0, "", ""),
+    88: (u"pop2", 0, "", ""),
+    89: (u"dup", 0, "", ""),
+    90: (u"dup_x1", 0, "", ""),
+    91: (u"dup_x2", 0, "", ""),
+    92: (u"dup2", 0, "", ""),
+    93: (u"dup2_x1", 0, "", ""),
+    94: (u"dup2_x2", 0, "", ""),
+    95: (u"swap", 0, "", ""),
+    96: (u"iadd", 0, "", ""),
+    97: (u"ladd", 0, "", ""),
+    98: (u"fadd", 0, "", ""),
+    99: (u"dadd", 0, "", ""),
+    100: (u"isub", 0, "", ""),
+    101: (u"lsub", 0, "", ""),
+    102: (u"fsub", 0, "", ""),
+    103: (u"dsub", 0, "", ""),
+    104: (u"imul", 0, "", ""),
+    105: (u"lmul", 0, "", ""),
+    106: (u"fmul", 0, "", ""),
+    107: (u"dmul", 0, "", ""),
+    108: (u"idiv", 0, "", ""),
+    109: (u"ldiv", 0, "", ""),
+    110: (u"fdiv", 0, "", ""),
+    111: (u"ddiv", 0, "", ""),
+    112: (u"irem", 0, "", ""),
+    113: (u"lrem", 0, "", ""),
+    114: (u"frem", 0, "", ""),
+    115: (u"drem", 0, "", ""),
+    116: (u"ineg", 0, "", ""),
+    117: (u"lneg", 0, "", ""),
+    118: (u"fneg", 0, "", ""),
+    119: (u"dneg", 0, "", ""),
+    120: (u"ishl", 0, "", ""),
+    121: (u"lshl", 0, "", ""),
+    122: (u"ishr", 0, "", ""),
+    123: (u"lshr", 0, "", ""),
+    124: (u"iushr", 0, "", ""),
+    125: (u"lushr", 0, "", ""),
+    126: (u"iand", 0, "", ""),
+    127: (u"land", 0, "", ""),
+    128: (u"ior", 0, "", ""),
+    129: (u"lor", 0, "", ""),
+    130: (u"ixor", 0, "", ""),
+    131: (u"lxor", 0, "", ""),
+    132: (u"iinc", 2, "Bb", "l#"),
+    133: (u"i2l", 0, "", ""),
+    134: (u"i2f", 0, "", ""),
+    135: (u"i2d", 0, "", ""),
+    136: (u"l2i", 0, "", ""),
+    137: (u"l2f", 0, "", ""),
+    138: (u"l2d", 0, "", ""),
+    139: (u"f2i", 0, "", ""),
+    140: (u"f2l", 0, "", ""),
+    141: (u"f2d", 0, "", ""),
+    142: (u"d2i", 0, "", ""),
+    143: (u"d2l", 0, "", ""),
+    144: (u"d2f", 0, "", ""),
+    145: (u"i2b", 0, "", ""),
+    146: (u"i2c", 0, "", ""),
+    147: (u"i2s", 0, "", ""),
+    148: (u"lcmp", 0, "", ""),
+    149: (u"fcmpl", 0, "", ""),
+    150: (u"fcmpg", 0, "", ""),
+    151: (u"dcmpl", 0, "", ""),
+    152: (u"dcmpg", 0, "", ""),
+    153: (u"ifeq", 2, "h", "o"),
+    154: (u"ifne", 2, "h", "o"),
+    155: (u"iflt", 2, "h", "o"),
+    156: (u"ifge", 2, "h", "o"),
+    157: (u"ifgt", 2, "h", "o"),
+    158: (u"ifle", 2, "h", "o"),
+    159: (u"if_icmpeq", 2, "h", "o"),
+    160: (u"if_icmpne", 2, "h", "o"),
+    161: (u"if_icmplt", 2, "h", "o"),
+    162: (u"if_icmpge", 2, "h", "o"),
+    163: (u"if_icmpgt", 2, "h", "o"),
+    164: (u"if_icmple", 2, "h", "o"),
+    165: (u"if_acmpeq", 2, "h", "o"),
+    166: (u"if_acmpne", 2, "h", "o"),
+    167: (u"goto", 2, "h", "o"),
+    168: (u"jsr", 2, "h", "o"),
+    169: (u"ret", 1, "B", "l"),
+    170: (u"tableswitch", None, "", ""),  # variable number of arguments
+    171: (u"lookupswitch", None, "", ""),  # variable number of arguments
+    172: (u"ireturn", 0, "", ""),
+    173: (u"lreturn", 0, "", ""),
+    174: (u"freturn", 0, "", ""),
+    175: (u"dreturn", 0, "", ""),
+    176: (u"areturn", 0, "", ""),
+    177: (u"return", 0, "", ""),
+    178: (u"getstatic", 2, "H", "c"),
+    179: (u"putstatic", 2, "H", "c"),
+    180: (u"getfield", 2, "H", "c"),
+    181: (u"putfield", 2, "H", "c"),
+    182: (u"invokevirtual", 2, "H", "c"),
+    183: (u"invokespecial", 2, "H", "c"),
+    184: (u"invokestatic", 2, "H", "c"),
+    185: (u"invokeinterface", 4, "HBB", "c#0"),
     # For historical reasons, opcode value 186 is not used
-    187: ("new", 2, "H", "c"),
-    188: ("newarray", 1, "B", "a"),
-    189: ("anewarray", 2, "H", "c"),
-    190: ("arraylength", 0, "", ""),
-    191: ("athrow", 0, "", ""),
-    192: ("checkcast", 2, "H", "c"),
-    193: ("instanceof", 2, "H", "c"),
-    194: ("monitorenter", 0, "", ""),
-    195: ("monitorexit", 0, "", ""),
-    196: ("wide", None, "", ""),  # 3 or 5 arguments, stack changes according to modified element
-    197: ("multianewarray", 3, "HB", "c#"),
-    198: ("ifnull", 2, "h", "o"),
-    199: ("ifnonnull", 2, "h", "o"),
-    200: ("goto_w", 4, "i", "o"),
-    201: ("jsr_w", 4, "i", "o"),
+    187: (u"new", 2, "H", "c"),
+    188: (u"newarray", 1, "B", "a"),
+    189: (u"anewarray", 2, "H", "c"),
+    190: (u"arraylength", 0, "", ""),
+    191: (u"athrow", 0, "", ""),
+    192: (u"checkcast", 2, "H", "c"),
+    193: (u"instanceof", 2, "H", "c"),
+    194: (u"monitorenter", 0, "", ""),
+    195: (u"monitorexit", 0, "", ""),
+    196: (u"wide", None, "", ""),  # 3 or 5 arguments, stack changes according to modified element
+    197: (u"multianewarray", 3, "HB", "c#"),
+    198: (u"ifnull", 2, "h", "o"),
+    199: (u"ifnonnull", 2, "h", "o"),
+    200: (u"goto_w", 4, "i", "o"),
+    201: (u"jsr_w", 4, "i", "o"),
     # Reserved opcodes; cannot appear in a class file
-    # 202: ("breakpoint", None),
-    # 254: ("impdep1", None),
-    # 255: ("impdep2", None),
+    # 202: (u"breakpoint", None),
+    # 254: (u"impdep1", None),
+    # 255: (u"impdep2", None),
     }
 
 # Access flags; JVMSpec 4.5
@@ -296,41 +296,41 @@ STRICT = 0x0800
 def access_description(flags):
     modifiers = []
     if ((flags & PUBLIC) != 0):
-        modifiers.append("public")
+        modifiers.append(u"public")
     if ((flags & PRIVATE) != 0):
-        modifiers.append("private")
+        modifiers.append(u"private")
     if ((flags & PROTECTED) != 0):
-        modifiers.append("protected")
+        modifiers.append(u"protected")
     if ((flags & STATIC) != 0):
-        modifiers.append("static")
+        modifiers.append(u"static")
     if ((flags & FINAL) != 0):
-        modifiers.append("final")
+        modifiers.append(u"final")
     if ((flags & SYNCHRONIZED) != 0):
-        modifiers.append("synchronized")
+        modifiers.append(u"synchronized")
     if ((flags & VOLATILE) != 0):
-        modifiers.append("volatile")
+        modifiers.append(u"volatile")
     if ((flags & TRANSIENT) != 0):
-        modifiers.append("transient")
+        modifiers.append(u"transient")
     if ((flags & NATIVE) != 0):
-        modifiers.append("native")
+        modifiers.append(u"native")
     if ((flags & INTERFACE) != 0):
-        modifiers.append("interface")
+        modifiers.append(u"interface")
     if ((flags & ABSTRACT) != 0):
-        modifiers.append("abstract")
+        modifiers.append(u"abstract")
     if ((flags & STRICT) != 0):
-        modifiers.append("strict")
+        modifiers.append(u"strict")
     return " ".join(modifiers)
 
 
 def set_pointer_size(size):
     global POINTER_SIZE
     POINTER_SIZE = size
-    DESCRIPTOR_SIZE_MAPPING["L"] = POINTER_SIZE
+    DESCRIPTOR_SIZE_MAPPING[u"L"] = POINTER_SIZE
 
 
 def fqcn(s):
     # JVMSpec 4.2
-    return s.replace("/", ".")
+    return s.replace(u"/", u".")
 
 
 def size_field_descriptor(s):
@@ -338,7 +338,7 @@ def size_field_descriptor(s):
     ii = 0
     while ii < len(s):
         c = s[ii]
-        if c == "[":
+        if c == u"[":
             pass
         elif c in DESCRIPTOR_SIZE_MAPPING:
             return DESCRIPTOR_SIZE_MAPPING[c]
@@ -357,20 +357,20 @@ def demangle_field_descriptor(s, void_allowed=False):
     ii = 0
     while ii < len(s):
         c = s[ii]
-        if c == "[":
+        if c == u"[":
             dim += 1
         elif c == "V" and void_allowed:
             if dim > 0:
                 raise Exception("Cannot have array of void")
-            return "void", s[ii + 1:]
+            return u"void", s[ii + 1:]
         elif c == "L":
-            endpoint = s.find(";", ii)
+            endpoint = s.find(u";", ii)
             if endpoint == -1:
                 raise Exception("Failed to find end of classname")
             classname = fqcn(s[ii + 1:endpoint])
-            return classname + dim * "[]", s[endpoint + 1:]
+            return classname + dim * u"[]", s[endpoint + 1:]
         elif c in DESCRIPTOR_TYPE_MAPPING:
-            return DESCRIPTOR_TYPE_MAPPING[c] + dim * "[]", s[ii + 1:]
+            return DESCRIPTOR_TYPE_MAPPING[c] + dim * u"[]", s[ii + 1:]
         else:
             raise Exception("Unknown descriptor code %s" % c)
         ii += 1
@@ -380,13 +380,13 @@ def demangle_field_descriptor(s, void_allowed=False):
 def demangle_method_descriptor(s):
     """Convert method descriptor to a pair of strings describing parameters and return type."""
     # JVMSpec 4.3.3
-    assert s[0] == "(", "Method descriptor %s should start with (" % s
+    assert s[0] == u"(", "Method descriptor %s should start with (" % s
     s = s[1:]
     params = []
-    while s[0] != ")" and len(s) > 0:
+    while s[0] != u")" and len(s) > 0:
         result, s = demangle_field_descriptor(s)
         params.append(result)
-    if (len(s) == 0 or s[0] != ")"):
+    if (len(s) == 0 or s[0] != u")"):
         raise Exception("Method descriptor %s should include )" % s)
     return_type, s = demangle_field_descriptor(s[1:], void_allowed=True)
     assert len(s) == 0, "Unexpected extra text in %s" % s

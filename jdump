@@ -36,43 +36,43 @@ from javaclass.jarfile import jar_classes
 
 
 # We don't need no stinking Visitor pattern
-ClassInfo.DUMP_NAME = "class"
-FieldRefInfo.DUMP_NAME = "Field"
-MethodRefInfo.DUMP_NAME = "Method"
-InterfaceMethodRefInfo.DUMP_NAME = "InterfaceMethod"
-NameAndTypeInfo.DUMP_NAME = "NameAndType"
-Utf8Info.DUMP_NAME = "Asciz"
-StringInfo.DUMP_NAME = "String"
-IntegerInfo.DUMP_NAME = "int"
-FloatInfo.DUMP_NAME = "float"
-LongInfo.DUMP_NAME = "long"
-DoubleInfo.DUMP_NAME = "double"
+ClassInfo.DUMP_NAME = u"class"
+FieldRefInfo.DUMP_NAME = u"Field"
+MethodRefInfo.DUMP_NAME = u"Method"
+InterfaceMethodRefInfo.DUMP_NAME = u"InterfaceMethod"
+NameAndTypeInfo.DUMP_NAME = u"NameAndType"
+Utf8Info.DUMP_NAME = u"Asciz"
+StringInfo.DUMP_NAME = u"String"
+IntegerInfo.DUMP_NAME = u"int"
+FloatInfo.DUMP_NAME = u"float"
+LongInfo.DUMP_NAME = u"long"
+DoubleInfo.DUMP_NAME = u"double"
 
 
 def _ConstantInfo_dump(self):
-    return "<unknown %d>" % self.TAG
+    return u"<unknown %d>" % self.TAG
 ConstantInfo.dump = _ConstantInfo_dump
 
 
 def _ClassInfo_dump(self):
-    return ("%s\t#%d;\t//  %s" %
+    return (u"%s\t#%d;\t//  %s" %
             (self.DUMP_NAME,
              self.name_index,
-             str(self)))
+             unicode(self)))
 ClassInfo.dump = _ClassInfo_dump
 
 
 def _RefInfo_dump(self):
-    return ("%s\t#%d.#%d;\t//  %s" %
+    return (u"%s\t#%d.#%d;\t//  %s" %
             (self.DUMP_NAME,
              self.class_index,
              self.name_and_type_index,
-             str(self)))
+             unicode(self)))
 RefInfo.dump = _RefInfo_dump
 
 
 def _NameAndTypeInfo_dump(self):
-    return ("%s\t#%d:#%d;//  %s" %
+    return (u"%s\t#%d:#%d;//  %s" %
             (self.DUMP_NAME,
              self.name_index,
              self.descriptor_index,
@@ -81,12 +81,12 @@ NameAndTypeInfo.dump = _NameAndTypeInfo_dump
 
 
 def _Utf8Info_dump(self):
-    return ("%s\t%s;" % (self.DUMP_NAME, str(self)))
+    return (u"%s\t%s;" % (self.DUMP_NAME, unicode(self)))
 Utf8Info.dump = _Utf8Info_dump
 
 
 def _StringInfo_dump(self):
-    return ("%s\t#%d;\t//  %s" %
+    return (u"%s\t#%d;\t//  %s" %
             (self.DUMP_NAME,
              self.string_index,
              self))
@@ -94,47 +94,47 @@ StringInfo.dump = _StringInfo_dump
 
 
 def _SmallNumInfo_dump(self):
-    return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+    return (u"%s\t%s;" % (self.DUMP_NAME, self.get_value()))
 SmallNumInfo.dump = _SmallNumInfo_dump
 
 
 def _LargeNumInfo_dump(self):
-    return ("%s\t%s;" % (self.DUMP_NAME, self.get_value()))
+    return (u"%s\t%s;" % (self.DUMP_NAME, self.get_value()))
 LargeNumInfo.dump = _LargeNumInfo_dump
 
 
 def _FieldInfo_dump(self):
     access_str = access_description(self.access_flags)
     if len(access_str) > 0:
-        access_str = access_str + " "
-    return ("%s%s %s;\n  Signature: %s\n\n" %
+        access_str = access_str + u" "
+    return (u"%s%s %s;\n  Signature: %s\n\n" %
             (access_str,
-             demangle_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))[0],
-             str(self.class_file.constants[self.name_index - 1]),
-             str(self.class_file.constants[self.descriptor_index - 1])))
+             demangle_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))[0],
+             unicode(self.class_file.constants[self.name_index - 1]),
+             unicode(self.class_file.constants[self.descriptor_index - 1])))
 FieldInfo.dump = _FieldInfo_dump
 
 
 def _MethodInfo_dump(self):
     access_str = access_description(self.access_flags)
     if len(access_str) > 0:
-        access_str = access_str + " "
-    params, return_type = demangle_method_descriptor(str(self.class_file.constants[self.descriptor_index - 1]))
-    method_name = str(self.class_file.constants[self.name_index - 1])
-    if method_name == "<init>":
-        result = ("%s%s(%s);\n" %
+        access_str = access_str + u" "
+    params, return_type = demangle_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+    method_name = unicode(self.class_file.constants[self.name_index - 1])
+    if method_name == u"<init>":
+        result = (u"%s%s(%s);\n" %
                   (access_str,
-                   str(self.class_file.this_class),
-                   ", ".join(params)))
-    elif method_name == "<clinit>":
-        result = "%s{};\n" % access_str
+                   unicode(self.class_file.this_class),
+                   u", ".join(params)))
+    elif method_name == u"<clinit>":
+        result = u"%s{};\n" % access_str
     else:
-        result = ("%s%s %s(%s);\n" %
+        result = (u"%s%s %s(%s);\n" %
                   (access_str,
                    return_type,
                    method_name,
-                   " ,".join(params)))
-    result += "  Signature: %s\n" % str(self.class_file.constants[self.descriptor_index - 1])
+                   u" ,".join(params)))
+    result += u"  Signature: %s\n" % unicode(self.class_file.constants[self.descriptor_index - 1])
     # Find the Code attribute
     for attr in self.attributes:
         if isinstance(attr, CodeAttributeInfo):
@@ -142,13 +142,13 @@ def _MethodInfo_dump(self):
             if (self.access_flags & jvmspec.STATIC) == 0:
                 argcount += 1  # for 'this'
             result += attr.dump(argcount)
-    result += "\n\n"
+    result += u"\n\n"
     return result
 MethodInfo.dump = _MethodInfo_dump
 
 
 def _CodeAttributeInfo_dump(self, argcount):
-    intro = ("  Code:\n   Stack=%d, Locals=%d, Args_size=%d\n" %
+    intro = (u"  Code:\n   Stack=%d, Locals=%d, Args_size=%d\n" %
               (self.max_stack, self.max_locals, argcount))
     lines = []
     ii = 0
@@ -157,7 +157,7 @@ def _CodeAttributeInfo_dump(self, argcount):
         assert opcode in jvmspec.BYTECODES, "Unknown opcode %d" % opcode
         op_name, op_size, struct_code, info_types = jvmspec.BYTECODES[opcode]
         assert len(struct_code) == len(info_types)
-        line = "   %d:\t%s" % (ii, op_name)
+        line = u"   %d:\t%s" % (ii, op_name)
         if op_name == "tableswitch":
             # expect 0 byte pads to next 4-byte boundary
             num_zeros = (4 - ((ii + 1) % 4)) % 4
@@ -197,26 +197,26 @@ def _CodeAttributeInfo_dump(self, argcount):
         suffix = ""
         for value, info_type in zip(values, info_types):
             out_value = None
-            if info_type == "#":
-                out_value = "%d" % value
+            if info_type == '#':
+                out_value = u"%d" % value
             elif info_type == 'c':
-                out_value = "#%d" % value
+                out_value = u"#%d" % value
                 const = self.class_file.constants[value - 1]
-                name = str(const)
+                name = unicode(const)
                 # If the name starts with "<thisclass>.", strip it
                 if (not isinstance(const, StringInfo) and
-                    name.startswith(str(self.class_file.this_class) + ".")):
-                    name = name[len(str(self.class_file.this_class)) + 1:]
-                suffix += "%s %s" % (const.DUMP_NAME, name)
+                    name.startswith(unicode(self.class_file.this_class) + u".")):
+                    name = name[len(unicode(self.class_file.this_class)) + 1:]
+                suffix += u"%s %s" % (const.DUMP_NAME, name)
             elif info_type == 'l':
                 if value in jvmspec.ARRAY_TYPE_MAPPING:
                     out_value = jvmspec.ARRAY_TYPE_MAPPING[value]
                 else:
-                    out_value = "unknown:%d" % value
+                    out_value = u"unknown:%d" % value
             elif info_type == 'o':
-                out_value = "%d" % (ii + value)
+                out_value = u"%d" % (ii + value)
             elif info_type == 'a':
-                out_value = "%d" % value
+                out_value = u"%d" % value
             elif info_type == '0':
                 assert value == 0
             else:
@@ -224,33 +224,33 @@ def _CodeAttributeInfo_dump(self, argcount):
             if out_value is not None:
                 out_values.append(out_value)
         if out_values:
-            line += "\t" + ", ".join(out_values)
+            line += u"\t" + u", ".join(out_values)
             if len(suffix) > 0:
-                line += "; //" + suffix
-        line += "\n"
+                line += u"; //" + suffix
+        line += u"\n"
         lines.append(line)
         ii += op_size + 1
-    return intro + "".join(lines)
+    return intro + u"".join(lines)
 CodeAttributeInfo.dump = _CodeAttributeInfo_dump
 
 
 def _ClassFile_dump(self):
-    result = ""
+    result = u""
     if self.sourcefile_attribute is not None:
-        result += ('Compiled from "%s"\n' %
-                   str(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
+        result += (u'Compiled from "%s"\n' %
+                   unicode(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
     access_str = access_description(self.access_flags & ~jvmspec.SYNCHRONIZED)
     if len(access_str) > 0:
-        access_str = access_str + " "
+        access_str = access_str + u" "
     result += (u"%sclass %s extends %s" %
-               (access_str, fqcn(str(self.this_class)), fqcn(str(self.super_class))))
+               (access_str, fqcn(unicode(self.this_class)), fqcn(unicode(self.super_class))))
     if self.interfaces:
-        result += (" implements " +
-                   ", ".join([fqcn(str(interf)) for interf in self.interfaces]))
-    result += "\n"
+        result += (u" implements " +
+                   u", ".join([fqcn(unicode(interf)) for interf in self.interfaces]))
+    result += u"\n"
     if self.sourcefile_attribute is not None:
-        result += ('  SourceFile: "%s"\n' %
-                   str(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
+        result += (u'  SourceFile: "%s"\n' %
+                   unicode(self.constants[self.sourcefile_attribute.sourcefile_index - 1]))
     result += u"  minor version: %s\n" % self.minorv
     result += u"  major version: %s\n" % self.majorv
 
@@ -259,8 +259,8 @@ def _ClassFile_dump(self):
         result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump())
                             for ii, c in enumerate(self.constants) if c is not None])
     result += u"\n{\n"
-    result += "".join([f.dump() for f in self.fields])
-    result += "".join([m.dump() for m in self.methods])
+    result += u"".join([f.dump() for f in self.fields])
+    result += u"".join([m.dump() for m in self.methods])
     # @@@ attributes
     result += u"}\n"
     return result
@@ -280,5 +280,5 @@ if __name__ == "__main__":
                 with open(arg, "rb") as f:
                     clist = [(arg, ClassFile(f.read()))]
             for filename, c in clist:
-                print c.dump()
+                print c.dump().encode("utf-8")
 

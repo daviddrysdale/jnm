@@ -58,21 +58,21 @@ class Symbol(object):
 
     # Type characters; lowercase for local (=private), uppercase for external
     # (protected/public)
-    CLASS = 'C'
-    DATA = 'D'
-    CODE = 'T'
+    CLASS = u'C'
+    DATA = u'D'
+    CODE = u'T'
     # Instance data has no equivalent in C -- fields in dynamically allocated
     # objects are accessed by calculating their offset using the header file
     # definition.  However, Java allows symbolic access to per-object fields,
     # so need to show them in the output.
-    INSTANCE_DATA = 'I'
+    INSTANCE_DATA = u'I'
 
-    UNDEFINED = 'U'
+    UNDEFINED = u'U'
     # References in code to other data/code.
-    REF_CLASS = 'K'
-    REF_DATA = 'F'
-    REF_CODE = 'R'
-    REF_INSTANCE_DATA = 'J'
+    REF_CLASS = u'K'
+    REF_DATA = u'F'
+    REF_CODE = u'R'
+    REF_INSTANCE_DATA = u'J'
 
     DEF_SYMTYPES = set((CLASS, DATA, CODE, INSTANCE_DATA))
     REF_SYMTYPES = set((REF_CLASS, REF_DATA, REF_CODE, REF_INSTANCE_DATA))
@@ -99,17 +99,17 @@ class Symbol(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __unicode__(self):
         if self.value is None:
-            return "         %s %s" % (self.symtype, self.name)
+            return u"         %s %s" % (self.symtype, self.name)
         else:
-            return "%08x %s %s" % (self.value, self.symtype, self.name)
+            return u"%08x %s %s" % (self.value, self.symtype, self.name)
 
     def demangled(self):
         if self.value is None:
-            return "         %s %s" % (self.symtype, self.expanded_name)
+            return u"         %s %s" % (self.symtype, self.expanded_name)
         else:
-            return "%08x %s %s" % (self.value, self.symtype, self.expanded_name)
+            return u"%08x %s %s" % (self.value, self.symtype, self.expanded_name)
 
 
 def visibility(t_code, access_flags):
@@ -123,24 +123,24 @@ def findref(jcls, ii):
     """Returns descriptor, class, name for referenced constant"""
     const = jcls.constants[ii - 1]
     if isinstance(const, ClassInfo):
-        class_desc = str(const)
-        if class_desc[0] != "[":
+        class_desc = unicode(const)
+        if class_desc[0] != u"[":
             # Plain old class name
             return None, fqcn(class_desc), None
         else:
             ii = 0
-            while class_desc[ii] == "[":
+            while class_desc[ii] == u"[":
                 ii += 1
-            if class_desc[ii] != "L":
+            if class_desc[ii] != u"L":
                 # Not interested in arrays of primitive types
                 return None, None, None
             else:
                 # Array of objects
                 return None, fqcn(class_desc), None
     elif isinstance(const, FieldRefInfo):
-        return const.get_descriptor(), fqcn(str(const.get_class())), const.get_name()
+        return const.get_descriptor(), fqcn(unicode(const.get_class())), const.get_name()
     elif isinstance(const, MethodRefInfo):
-        return const.get_descriptor(), fqcn(str(const.get_class())), const.get_name()
+        return const.get_descriptor(), fqcn(unicode(const.get_class())), const.get_name()
     else:
         return None, None, None
 
@@ -151,13 +151,13 @@ def _FieldInfo_dump(self):
         symtype = Symbol.DATA
     else:
         symtype = Symbol.INSTANCE_DATA
-    name = "%s.%s" % (fqcn(str(self.class_file.this_class)),
-                      str(self.class_file.constants[self.name_index - 1]))
+    name = u"%s.%s" % (fqcn(unicode(self.class_file.this_class)),
+                      unicode(self.class_file.constants[self.name_index - 1]))
     descriptor = self.get_descriptor()
-    return Symbol(size_field_descriptor(str(self.class_file.constants[self.descriptor_index - 1])),
+    return Symbol(size_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1])),
                   visibility(symtype, self.access_flags),
-                  "%s:%s" % (name, descriptor),
-                  "%s %s" % (jvmspec.demangle_field_descriptor(descriptor)[0], name))
+                  u"%s:%s" % (name, descriptor),
+                  u"%s %s" % (jvmspec.demangle_field_descriptor(descriptor)[0], name))
 FieldInfo.dump = _FieldInfo_dump
 
 
@@ -170,14 +170,14 @@ def _MethodInfo_dump(self):
             codeattr = attr
             size = len(attr.code)
             break
-    name = "%s.%s" % (fqcn(str(self.class_file.this_class)),
-                      str(self.class_file.constants[self.name_index - 1]))
+    name = u"%s.%s" % (fqcn(unicode(self.class_file.this_class)),
+                      unicode(self.class_file.constants[self.name_index - 1]))
     descriptor = self.get_descriptor()
     params, return_type = jvmspec.demangle_method_descriptor(descriptor)
     results = [Symbol(size,
                       visibility(Symbol.CODE, self.access_flags),
-                      "%s:%s" % (name, self.get_descriptor()),
-                      "%s %s(%s)" % (return_type, name, ", ".join(params)))]
+                      u"%s:%s" % (name, self.get_descriptor()),
+                      u"%s %s(%s)" % (return_type, name, u", ".join(params)))]
     if codeattr is not None:
         results.extend(codeattr.dump())
     return results
@@ -252,13 +252,13 @@ def _CodeAttributeInfo_dump(self):
                 if symtype == Symbol.REF_DATA or symtype == Symbol.REF_INSTANCE_DATA:
                     expanded_descriptor = jvmspec.demangle_field_descriptor(descriptor)[0]
                     results.append(Symbol(None, symtype,
-                                          "%s.%s:%s" % (jcls, name, descriptor),
-                                          "%s %s.%s" % (expanded_descriptor, jcls, name)))
+                                          u"%s.%s:%s" % (jcls, name, descriptor),
+                                          u"%s %s.%s" % (expanded_descriptor, jcls, name)))
                 elif symtype == Symbol.REF_CODE:
                     params, return_type = jvmspec.demangle_method_descriptor(descriptor)
                     results.append(Symbol(None, symtype,
-                                          "%s.%s:%s" % (jcls, name, descriptor),
-                                          "%s %s.%s(%s)" % (return_type, jcls, name, ", ".join(params))))
+                                          u"%s.%s:%s" % (jcls, name, descriptor),
+                                          u"%s %s.%s(%s)" % (return_type, jcls, name, u", ".join(params))))
                 else:
                     results.append(Symbol(None, symtype, jcls))
         ii += op_size + 1
@@ -267,7 +267,7 @@ CodeAttributeInfo.dump = _CodeAttributeInfo_dump
 
 
 def _ClassFile_dump(self):
-    results = [Symbol(self.size, Symbol.CLASS, fqcn(str(self.this_class)))]
+    results = [Symbol(self.size, Symbol.CLASS, fqcn(unicode(self.this_class)))]
     for f in self.fields:
         f_info = f.dump()
         if f_info is not None:
@@ -358,18 +358,18 @@ def reverse_sort(symlist):
 
 # Display functions
 def normal_display(jarfile, filename, sym, current):
-    return str(sym)
+    return unicode(sym)
 
 
 def prepend_filename(jarfile, filename, sym, current):
     if jarfile is None:
-        return "%s:%s" % (filename, current)
+        return u"%s:%s" % (filename, current)
     else:
-        return "%s:%s:%s" % (jarfile, filename, current)
+        return u"%s:%s:%s" % (jarfile, filename, current)
 
 
 def name_only(jarfile, filename, sym, current):
-    return "%s" % sym.name
+    return u"%s" % sym.name
 
 
 def demangle(jarfile, filename, sym, current):
@@ -483,4 +483,4 @@ if __name__ == "__main__":
                 results = c.dump()
                 results = opts.process(results)
                 for symbol in results:
-                    print opts.display(jarfile, filename, symbol)
+                    print opts.display(jarfile, filename, symbol).encode("utf-8")

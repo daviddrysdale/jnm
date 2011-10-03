@@ -111,8 +111,8 @@ class ClassInfo(ConstantInfo):
     def serialize(self):
         return su2(self.name_index)
 
-    def __str__(self):
-        return str(self.class_file.constants[self.name_index - 1])
+    def __unicode__(self):
+        return unicode(self.class_file.constants[self.name_index - 1])
 
 
 class RefInfo(ConstantInfo):
@@ -142,10 +142,10 @@ class RefInfo(ConstantInfo):
             # Some name indexes are zero to indicate special conditions.
             return None
 
-    def __str__(self):
-        return ("%s.%s" %
-                (str(self.class_file.constants[self.class_index - 1]),
-                 str(self.class_file.constants[self.name_and_type_index - 1])))
+    def __unicode__(self):
+        return (u"%s.%s" %
+                (unicode(self.class_file.constants[self.class_index - 1]),
+                 unicode(self.class_file.constants[self.name_and_type_index - 1])))
 
 
 class FieldRefInfo(RefInfo):
@@ -178,9 +178,9 @@ class NameAndTypeInfo(ConstantInfo):
     def get_name(self):
         return unicode(self.class_file.constants[self.name_index - 1])
 
-    def __str__(self):
-        return ("%s:%s" % (str(self.class_file.constants[self.name_index - 1]),
-                           str(self.class_file.constants[self.descriptor_index - 1])))
+    def __unicode__(self):
+        return (u"%s:%s" % (unicode(self.class_file.constants[self.name_index - 1]),
+                           unicode(self.class_file.constants[self.descriptor_index - 1])))
 
 
 class Utf8Info(ConstantInfo):
@@ -195,14 +195,11 @@ class Utf8Info(ConstantInfo):
     def serialize(self):
         return su2(self.length) + self.bytes
 
-    def __str__(self):
-        return self.bytes
-
     def __unicode__(self):
-        return unicode(self.bytes, "utf-8")
+        return unicode(self.bytes, "utf-8", "ignore")
 
     def get_value(self):
-        return str(self)
+        return unicode(self)
 
 
 class StringInfo(ConstantInfo):
@@ -216,14 +213,11 @@ class StringInfo(ConstantInfo):
     def serialize(self):
         return su2(self.string_index)
 
-    def __str__(self):
-        return str(self.class_file.constants[self.string_index - 1])
-
     def __unicode__(self):
         return unicode(self.class_file.constants[self.string_index - 1])
 
     def get_value(self):
-        return str(self)
+        return unicode(self)
 
 
 class SmallNumInfo(ConstantInfo):
@@ -1214,8 +1208,8 @@ class ClassFile(object):
             index = 0
             for c in self.constants:
                 index += 1
-                if isinstance(c, Utf8Info) and str(c) in ATTR_NAMES_TO_CLASS.keys():
-                    self.attribute_class_to_index[ATTR_NAMES_TO_CLASS[str(c)]] = index
+                if isinstance(c, Utf8Info) and unicode(c) in ATTR_NAMES_TO_CLASS.keys():
+                    self.attribute_class_to_index[ATTR_NAMES_TO_CLASS[unicode(c)]] = index
         for attribute in attrs:
             for (classtype, name_index) in self.attribute_class_to_index.iteritems():
                 if isinstance(attribute, classtype):
