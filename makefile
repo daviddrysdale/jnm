@@ -4,7 +4,7 @@ TEST_CLASS_FILES = $(subst tests/,bin/,$(TEST_JAVA_FILES:.java=.class))
 TEST_JAVAP_FILES = $(subst tests/,javap.out/,$(TEST_JAVA_FILES:.java=.dis))
 TEST_JDUMP_FILES = $(subst tests/,jdump.out/,$(TEST_JAVA_FILES:.java=.dis))
 
-test: testclasses testjar testjdump
+test: testclasses testjar testjdump testjnm
 
 testclasses: bin $(TEST_CLASS_FILES)
 	@list='$(TEST_CLASS_FILES)'; for cfile in $$list; do \
@@ -19,6 +19,8 @@ test.jar: $(TEST_CLASS_FILES)
 
 testjdump: javap.out $(TEST_JAVAP_FILES) jdump.out $(TEST_JDUMP_FILES)
 
+testjnm: test.jar
+	jnm -C test.jar
 
 bin/%.class: tests/%.java
 	javac -d bin $(TEST_JAVA_FILES)
