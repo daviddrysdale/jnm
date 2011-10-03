@@ -175,9 +175,9 @@ def _CodeAttributeInfo_dump(self, argcount):
             assert (args_offset % 4) == 0
             default, npairs = struct.unpack(">ii",
                                             self.code[args_offset:args_offset + 8])
-            op_size = num_zeros + (2 + npairs) * 4
-            struct_code = num_zeros * "B" + "ii" + npairs * "i"
-            info_types = num_zeros * "0" + "##" + npairs * "o"
+            op_size = num_zeros + (2 + 2 * npairs) * 4
+            struct_code = num_zeros * "B" + "ii" + npairs * "ii"
+            info_types = num_zeros * "0" + "##" + npairs * "#o"
         elif op_name == "wide":
             ii += 1  # move past "wide" opcode
             opcode = ord(self.code[ii])
@@ -253,9 +253,10 @@ def _ClassFile_dump(self):
     result += u"  minor version: %s\n" % self.minorv
     result += u"  major version: %s\n" % self.majorv
 
-    result += u"  Constant pool:\n"
-    result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump())
-                        for ii, c in enumerate(self.constants)])
+    if self.constants is not None:
+        result += u"  Constant pool:\n"
+        result += u"".join([u"const #%d = %s\n" % (ii + 1, c.dump())
+                            for ii, c in enumerate(self.constants)])
     result += u"\n{\n"
     result += "".join([f.dump() for f in self.fields])
     result += "".join([m.dump() for m in self.methods])

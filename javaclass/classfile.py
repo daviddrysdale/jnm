@@ -1056,7 +1056,7 @@ class ClassFile(object):
         self.sourcefile_attribute = None
         magic = u4(s[0:])
         if magic != 0xCAFEBABE:
-            raise UnknownAttribute(magic)
+            raise UnknownAttribute("%08x" % magic)
         self.minorv, self.majorv = u2(s[4:]), u2(s[6:])
         self.constants, s = self._get_constants(s[8:])
         self.access_flags, s = self._get_access_flags(s)
