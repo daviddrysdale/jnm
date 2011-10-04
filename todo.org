@@ -1,0 +1,9 @@
+* DONE add option to allow assumption of 32b/64b pointers
+  CLOSED: [2011-10-03 Mon 19:57]
+* TODO add -dalvik option to cope with different opcodes
+* TODO run jdump & jnm over all class files on system
+* TODO option for jnm to resolve within jar files...flatten option to make all the symbols be in one big namespace
+* TODO check exception processing -- are there references needed there?
+* TODO setup.py
+* TODO jldd
+* TODO README.md
