@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+import sys
+import re
+
+from javaclass.jvmspec import demangle_field_descriptor, fqcn
+from javaclass.jvmspec import demangle_method_descriptor
+
+BASE_TYPE = u'[BCDFIJSZ]'
+BASE_TYPE_V = u'[BCDFIJSZV]'  # V for void, allowed as return type
+OBJECT_TYPE = u'L\S+;'
+
+FIELD_DESCRIPTOR = ur'\[*(' + BASE_TYPE + u'|' + OBJECT_TYPE + u')'
+FIELD_DESCRIPTOR_V = ur'\[*(' + BASE_TYPE_V + u'|' + OBJECT_TYPE + u')'
+
+RE_FIELD = re.compile(ur'(?P<name>\S+):(?P<descriptor>%s)' % FIELD_DESCRIPTOR, re.UNICODE)
+RE_METHOD = re.compile(ur'(?P<name>\S+):(?P<descriptor>\(%s*\)%s)' % (FIELD_DESCRIPTOR, FIELD_DESCRIPTOR_V), re.UNICODE)
+
+
+def replace_field(m):
+    descriptor = demangle_field_descriptor(m.group('descriptor'))[0]
+    return u"%s %s" % (fqcn(descriptor), m.group('name'))
+
+
+def replace_method(m):
+    descriptor = m.group('descriptor')
+    params, return_type = demangle_method_descriptor(descriptor)
+    return u"%s %s(%s)" % (return_type, m.group('name'), u", ".join(params))
+
+
+def demangle(input):
+    input = re.sub(RE_FIELD, replace_field, input)
+    input = re.sub(RE_METHOD, replace_method, input)
+    return input
+
+
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        infile = sys.stdin
+    else:
+        infile = file(sys.argv[1])
+    for line in infile:
+        print demangle(line),
