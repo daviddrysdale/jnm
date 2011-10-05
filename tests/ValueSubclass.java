@@ -1,10 +1,10 @@
-public class ValueSubclass extends Value {
+public class ValueSubClass extends Value {
     public Value tmp;
 
     /**
-     * Test of subclass initialisation with super usage and foreign object initialisation.
+     * Test of sub Class initialisation with super usage and foreign object initialisation.
      */
-    public ValueSubclass(int x) {
+    public ValueSubClass(int x) {
         super(x);
         tmp = new Value(42);
     }
@@ -34,14 +34,14 @@ public class ValueSubclass extends Value {
      * Test program.
      */
     public static void main(String[] args) {
-        SubclassValue sv = new SubclassValue(686);
+        SubClassValue sv = new SubClassValue(686);
         if (sv.getValue() == 686) {
             System.out.println("sv.getValue() correct: " + sv.getValue());
         } else {
             System.err.println("sv.getValue() failed!");
         }
         
-        ValueSubclass vs = new ValueSubclass(109);
+        ValueSubClass vs = new ValueSubClass(109);
         if (vs.tmp.getValue() == 42) {
             System.out.println("vs.tmp.getValue() correct: " + vs.tmp.getValue());
         } else {
@@ -72,13 +72,3 @@ public class ValueSubclass extends Value {
     }
 }
 
-// This would confuse a simple importer since it should be read before Value in
-// alphabetical order.
-
-class SubclassValue extends Value {
-    public SubclassValue(int x) {
-        super(x);
-    }
-}
-
-// vim: tabstop=4 expandtab shiftwidth=4

@@ -1,11 +1,11 @@
-public class FieldSubclassTest extends FieldTest {
+public class FieldSubClassTest extends FieldTest {
     public static void main(String[] args) {
-        if (FieldSubclassTest.h != null && FieldSubclassTest.h.a == 789) {
-            System.out.println("FieldSubclassTest.h.a correct: " + FieldSubclassTest.h.a);
+        if (FieldSubClassTest.h != null && FieldSubClassTest.h.a == 789) {
+            System.out.println("FieldSubClassTest.h.a correct: " + FieldSubClassTest.h.a);
         } else {
-            System.out.println("FieldSubclassTest.h.a failed!");
+            System.out.println("FieldSubClassTest.h.a failed!");
         }
-        FieldSubclassTest test = new FieldSubclassTest();
+        FieldSubClassTest test = new FieldSubClassTest();
         if (test.h != null && test.h.a == 789) {
             System.out.println("test.h.a correct: " + test.h.a);
         } else {
@@ -23,5 +23,3 @@ public class FieldSubclassTest extends FieldTest {
         }
     }
 }
-
-// vim: tabstop=4 expandtab shiftwidth=4

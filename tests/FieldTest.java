@@ -37,12 +37,3 @@ public class FieldTest {
     }
 }
 
-class FieldTestClass {
-    public int a;
-
-    public FieldTestClass(int a) {
-        this.a = a;
-    }
-}
-
-// vim: tabstop=4 expandtab shiftwidth=4

@@ -241,14 +241,3 @@ public class ExceptionTest {
         }
     }
 }
-
-class MyException extends java.lang.Exception {
-}
-
-class MyOtherException extends java.lang.Exception {
-}
-
-class MyUncheckedException extends java.lang.Exception {
-}
-
-// vim: tabstop=4 expandtab shiftwidth=4

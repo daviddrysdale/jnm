@@ -92,21 +92,3 @@ public class DispatchTest {
         }
     }
 }
-
-interface DispatchInterface {
-    public int test();
-}
-
-class DispatchClass1 implements DispatchInterface {
-    public int test() {
-        return 1;
-    }
-}
-
-class DispatchClass2 implements DispatchInterface {
-    public int test() {
-        return 2;
-    }
-}
-
-// vim: tabstop=4 expandtab shiftwidth=4
