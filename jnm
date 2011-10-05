@@ -49,7 +49,8 @@ from javaclass.jvmspec import demangle_field_descriptor
 from javaclass.jvmspec import size_field_descriptor
 from javaclass.classfile import (ClassInfo, FieldRefInfo, MethodRefInfo,
                                  DoubleInfo, FieldInfo, MethodInfo,
-                                 CodeAttributeInfo, ClassFile)
+                                 CodeAttributeInfo, ExceptionsAttributeInfo,
+                                 ClassFile)
 from javaclass.jarfile import jar_classes
 
 
@@ -164,12 +165,14 @@ FieldInfo.dump = _FieldInfo_dump
 def _MethodInfo_dump(self):
     # Find the Code attribute
     size = None
-    codeattr = None
+    code_attr = None
+    exc_attr = None
     for attr in self.attributes:
         if isinstance(attr, CodeAttributeInfo):
-            codeattr = attr
+            code_attr = attr
             size = len(attr.code)
-            break
+        elif isinstance(attr, ExceptionsAttributeInfo):
+            exc_attr = attr
     name = u"%s.%s" % (fqcn(unicode(self.class_file.this_class)),
                       unicode(self.class_file.constants[self.name_index - 1]))
     descriptor = self.get_descriptor()
@@ -178,8 +181,10 @@ def _MethodInfo_dump(self):
                       visibility(Symbol.CODE, self.access_flags),
                       u"%s:%s" % (name, self.get_descriptor()),
                       u"%s %s(%s)" % (return_type, name, u", ".join(params)))]
-    if codeattr is not None:
-        results.extend(codeattr.dump())
+    if code_attr is not None:
+        results.extend(code_attr.dump())
+    if exc_attr is not None:
+        results.extend(exc_attr.dump())
     return results
 MethodInfo.dump = _MethodInfo_dump
 
@@ -262,8 +267,21 @@ def _CodeAttributeInfo_dump(self):
                 else:
                     results.append(Symbol(None, symtype, jcls))
         ii += op_size + 1
+    for exc in self.exception_table:
+        if exc.catch_type != 0:
+            descriptor, jcls, name = findref(self.class_file, exc.catch_type)
+            results.append(Symbol(None, Symbol.REF_CLASS, jcls))
     return results
 CodeAttributeInfo.dump = _CodeAttributeInfo_dump
+
+
+def _ExceptionsAttributeInfo_dump(self):
+    results = []
+    for exc_idx in self.exception_index_table:
+        descriptor, jcls, name = findref(self.class_file, exc_idx)
+        results.append(Symbol(None, Symbol.REF_CLASS, jcls))
+    return results
+ExceptionsAttributeInfo.dump = _ExceptionsAttributeInfo_dump
 
 
 def _ClassFile_dump(self):

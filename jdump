@@ -31,7 +31,8 @@ from javaclass.classfile import (ConstantInfo, ClassInfo, RefInfo,
                                  Utf8Info, StringInfo, SmallNumInfo,
                                  IntegerInfo, FloatInfo, LargeNumInfo,
                                  LongInfo, DoubleInfo, FieldInfo, MethodInfo,
-                                 CodeAttributeInfo, ClassFile)
+                                 CodeAttributeInfo, ExceptionsAttributeInfo,
+                                 ClassFile)
 from javaclass.jarfile import jar_classes
 
 
@@ -116,32 +117,46 @@ FieldInfo.dump = _FieldInfo_dump
 
 
 def _MethodInfo_dump(self):
+    # Find the Code & Exception attributes
+    code_attr = None
+    exc_attr = None
+    for attr in self.attributes:
+        if isinstance(attr, CodeAttributeInfo):
+            code_attr = attr
+        elif isinstance(attr, ExceptionsAttributeInfo):
+            exc_attr = attr
     access_str = access_description(self.access_flags)
     if len(access_str) > 0:
         access_str = access_str + u" "
     params, return_type = demangle_method_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
     method_name = unicode(self.class_file.constants[self.name_index - 1])
+    if exc_attr is not None:
+        throws_info = u" throws " + u", ".join([fqcn(unicode(self.class_file.constants[exc_idx - 1]))
+                                                             for exc_idx in exc_attr.exception_index_table])
+    else:
+        throws_info = u""
     if method_name == u"<init>":
-        result = (u"%s%s(%s);\n" %
+        result = (u"%s%s(%s)%s;\n" %
                   (access_str,
                    unicode(self.class_file.this_class),
-                   u", ".join(params)))
+                   u", ".join(params),
+                   throws_info))
     elif method_name == u"<clinit>":
         result = u"%s{};\n" % access_str
     else:
-        result = (u"%s%s %s(%s);\n" %
+        result = (u"%s%s %s(%s)%s;\n" %
                   (access_str,
                    return_type,
                    method_name,
-                   u" ,".join(params)))
+                   u" ,".join(params),
+                   throws_info))
     result += u"  Signature: %s\n" % unicode(self.class_file.constants[self.descriptor_index - 1])
-    # Find the Code attribute
-    for attr in self.attributes:
-        if isinstance(attr, CodeAttributeInfo):
-            argcount = len(params)
-            if (self.access_flags & jvmspec.STATIC) == 0:
-                argcount += 1  # for 'this'
-            result += attr.dump(argcount)
+    argcount = len(params)
+    if (self.access_flags & jvmspec.STATIC) == 0:
+        argcount += 1  # for 'this'
+    result += code_attr.dump(argcount)
+    if exc_attr is not None:
+        result += exc_attr.dump()
     result += u"\n\n"
     return result
 MethodInfo.dump = _MethodInfo_dump
@@ -230,8 +245,29 @@ def _CodeAttributeInfo_dump(self, argcount):
         line += u"\n"
         lines.append(line)
         ii += op_size + 1
-    return intro + u"".join(lines)
+    result = intro + u"".join(lines)
+    if len(self.exception_table) > 0:
+        exc_intro = u"  Exception table:\n from   to  target type\n"
+        exc_lines = []
+        for exc in self.exception_table:
+            if exc.catch_type == 0:
+                exc_name = "any"
+            else:
+                exc_name = "Class %s\n" % unicode(self.class_file.constants[exc.catch_type - 1])
+            exc_lines.append("  %4d  %4d  %4d   %s\n" %
+                             (exc.start_pc, exc.end_pc, exc.handler_pc, exc_name))
+        result += exc_intro + u"".join(exc_lines)
+    return result
 CodeAttributeInfo.dump = _CodeAttributeInfo_dump
+
+
+def _ExceptionsAttribute_info_dump(self):
+    intro = u"  Exceptions:\n"
+    lines = []
+    for exc_idx in self.exception_index_table:
+        lines.append("   throws %s" % fqcn(unicode(self.class_file.constants[exc_idx - 1])))
+    return intro + u"\n".join(lines)
+ExceptionsAttributeInfo.dump = _ExceptionsAttribute_info_dump
 
 
 def _ClassFile_dump(self):
@@ -281,4 +317,3 @@ if __name__ == "__main__":
                     clist = [(arg, ClassFile(f.read()))]
             for filename, c in clist:
                 print c.dump().encode("utf-8")
-

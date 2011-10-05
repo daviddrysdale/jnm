@@ -6,7 +6,8 @@
   CLOSED: [2011-10-04 Tue 20:01]
 * TODO option for jnm to resolve within jar files...flatten option to make all the symbols be in one big namespace
 * TODO have a separate demangle command that output can be piped to
-* TODO check exception processing -- are there references needed there?
+* DONE check exception processing -- are there references needed there?
+  CLOSED: [2011-10-05 Wed 19:32]
 * TODO setup.py
 * TODO jldd
 * TODO jldd option to just show packages or to show all class references
