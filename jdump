@@ -154,7 +154,8 @@ def _MethodInfo_dump(self):
     argcount = len(params)
     if (self.access_flags & jvmspec.STATIC) == 0:
         argcount += 1  # for 'this'
-    result += code_attr.dump(argcount)
+    if code_attr is not None:
+        result += code_attr.dump(argcount)
     if exc_attr is not None:
         result += exc_attr.dump()
     result += u"\n\n"
