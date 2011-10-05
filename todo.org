@@ -4,7 +4,9 @@
   CLOSED: [2011-10-04 Tue 19:33]
 * DONE run jdump & jnm over all class files on system
   CLOSED: [2011-10-04 Tue 20:01]
-* TODO option for jnm to resolve within jar files...flatten option to make all the symbols be in one big namespace
+* DONE option for jnm to resolve within jar files...flatten option to make all the symbols be in one big namespace
+  CLOSED: [2011-10-05 Wed 20:13]
+* TODO fix output for unresolved ref to field/method in superclass of this
 * TODO have a separate demangle command that output can be piped to
 * DONE check exception processing -- are there references needed there?
   CLOSED: [2011-10-05 Wed 19:32]

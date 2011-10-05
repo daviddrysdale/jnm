@@ -298,19 +298,68 @@ def _ClassFile_dump(self):
 ClassFile.dump = _ClassFile_dump
 
 
-# Filters
-def resolve(symlist):
-    """Remove duplicate symbol info and resolve internal references"""
+# Filter functions; take a list of 3-tuples (jarfile, classfile, symbol)
+def resolve_class(symlist):
+    """Remove duplicate symbol info and resolve internal references within each class"""
+    # Remove duplicates and track definitions
+    deduped = []
+    # Each of the following maps from (jarfile, classfile) to a map of name: symbol
+    seen = {}
+    fields = {}
+    methods = {}
+    classes = {}
+    for jarfile, classfile, syminfo in symlist:
+        jcls = (jarfile, classfile)
+        if jcls not in seen:
+            seen[jcls] = set()
+            fields[jcls] = {}
+            methods[jcls] = {}
+            classes[jcls] = {}
+        if syminfo not in seen[jcls]:
+            seen[jcls].add(syminfo)
+            deduped.append((jarfile, classfile, syminfo))
+            if syminfo.symtype.upper() == Symbol.CLASS:
+                classes[jcls][syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.DATA:
+                fields[jcls][syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
+                fields[jcls][syminfo.name] = syminfo
+            elif syminfo.symtype.upper() == Symbol.CODE:
+                methods[jcls][syminfo.name] = syminfo
+
+    # Remove references where there is a matching definition
+    resolved = []
+    for jarfile, classfile, syminfo in deduped:
+        jcls = (jarfile, classfile)
+        if (syminfo.symtype.upper() == Symbol.REF_CLASS and
+            syminfo.name in classes[jcls]):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_DATA and
+              syminfo.name in fields[jcls]):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA and
+              syminfo.name in fields[jcls]):
+            pass
+        elif (syminfo.symtype.upper() == Symbol.REF_CODE and
+              syminfo.name in methods[jcls]):
+            pass
+        else:
+            resolved.append((jarfile, classfile, syminfo))
+    return resolved
+
+
+def resolve_all(symlist):
+    """Remove duplicate symbol info and resolve internal references across all classes"""
     seen = set()
     fields = {}
     methods = {}
     classes = {}
     # Remove duplicates and track definitions
     deduped = []
-    for syminfo in symlist:
+    for jarfile, classfile, syminfo in symlist:
         if syminfo not in seen:
             seen.add(syminfo)
-            deduped.append(syminfo)
+            deduped.append((jarfile, classfile, syminfo))
             if syminfo.symtype.upper() == Symbol.CLASS:
                 classes[syminfo.name] = syminfo
             elif syminfo.symtype.upper() == Symbol.DATA:
@@ -322,7 +371,7 @@ def resolve(symlist):
 
     # Remove references where there is a matching definition
     resolved = []
-    for syminfo in deduped:
+    for jarfile, classfile, syminfo in deduped:
         if (syminfo.symtype.upper() == Symbol.REF_CLASS and
             syminfo.name in classes):
             pass
@@ -336,33 +385,33 @@ def resolve(symlist):
               syminfo.name in methods):
             pass
         else:
-            resolved.append(syminfo)
+            resolved.append((jarfile, classfile, syminfo))
     return resolved
 
 
 def remove_defined(symlist):
-    return [sym for sym in symlist if sym.symtype.upper() not in Symbol.DEF_SYMTYPES]
+    return [sym for sym in symlist if sym[2].symtype.upper() not in Symbol.DEF_SYMTYPES]
 
 
 def remove_undefined(symlist):
-    return [sym for sym in symlist if sym.symtype.upper() in Symbol.DEF_SYMTYPES]
+    return [sym for sym in symlist if sym[2].symtype.upper() in Symbol.DEF_SYMTYPES]
 
 
 def remove_undefined(symlist):
-    return [sym for sym in symlist if sym.symtype.upper() in Symbol.DEF_SYMTYPES]
+    return [sym for sym in symlist if sym[2].symtype.upper() in Symbol.DEF_SYMTYPES]
 
 
 def remove_private(symlist):
-    return [sym for sym in symlist if sym.symtype.isupper()]
+    return [sym for sym in symlist if sym[2].symtype.isupper()]
 
 
-# Sort functions
+# Sort functions; take a list of 3-tuples (jarfile, classfile, symbol)
 def alphabetic_sort(symlist):
-    return sorted(symlist, key=lambda x: x.name)
+    return sorted(symlist, key=lambda x: x[2].name)
 
 
 def numeric_sort(symlist):
-    return sorted(symlist, key=lambda x: x.value)
+    return sorted(symlist, key=lambda x: x[2].value)
 
 
 def noop_sort(symlist):
@@ -406,6 +455,7 @@ class NMOpts(object):
                 ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
                 ("U", "defined-only", "Don't display undefined symbols", remove_undefined, None, None),
                 ("g", "extern-only", "Don't display external (non-private) symbols", remove_private, None, None),
+                ("f", "flatten", "Resolve references within the set of files specified", resolve_all, None, None),
                 # Display options
                 ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
                 ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
@@ -431,7 +481,7 @@ class NMOpts(object):
 
     def __init__(self, message):
         self.message = message
-        self.filters = [resolve]
+        self.filters = [resolve_class]
         self.sorts = []
         self.displays = [normal_display]
 
@@ -487,18 +537,29 @@ if __name__ == "__main__":
     else:
         opts = NMOpts(__doc__)
         args = opts.getopts(sys.argv[1:])
+        show_filename_prolog = (len(args) > 1)
         for arg in args:
             if arg.endswith(".jar"):
+                show_filename_prolog = True
                 jarfile = arg
                 clist = jar_classes(arg)
             else:
                 jarfile = None
                 with open(arg, "rb") as f:
                     clist = [(arg, ClassFile(f.read()))]
-            for filename, c in clist:
-                if jarfile is not None and prepend_filename not in opts.displays:
-                    print "\n%s(%s):" % (jarfile, filename)
-                results = c.dump()
-                results = opts.process(results)
-                for symbol in results:
-                    print opts.display(jarfile, filename, symbol).encode("utf-8")
+            resultslist = [(jarfile, filename, sym) for filename, c in clist for sym in c.dump()]
+
+        resultslist = opts.process(resultslist)
+
+        prev_file = (None, None)
+        for jarfile, classfile, symbol in resultslist:
+            this_file = (jarfile, classfile)
+            if (show_filename_prolog and
+                prev_file != this_file and
+                prepend_filename not in opts.displays):
+                if jarfile is None:
+                    print "\n%s:" % classfile
+                else:
+                    print "\n%s(%s):" % this_file
+                prev_file = this_file
+            print opts.display(jarfile, classfile, symbol).encode("utf-8")
