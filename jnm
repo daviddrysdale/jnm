@@ -415,7 +415,7 @@ class NMOpts(object):
                 ("", "m32", "Assume pointers are 32-bit", None, None, None),
                 )
     SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
-    LONG_OPTS = dict([("--%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
+    LONG_OPTS = dict([("--%s" % optinfo[1], optinfo) for optinfo in OPT_INFO])
     ALL_OPTS = dict(SHORT_OPTS.items() + LONG_OPTS.items())
 
     def usage(self, err):
