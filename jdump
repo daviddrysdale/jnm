@@ -208,14 +208,14 @@ def _CodeAttributeInfo_dump(self, argcount):
                     name.startswith(unicode(self.class_file.this_class) + u".")):
                     name = name[len(unicode(self.class_file.this_class)) + 1:]
                 suffix += u"%s %s" % (const.DUMP_NAME, name)
-            elif info_type == 'l':
+            elif info_type == 'a':
                 if value in jvmspec.ARRAY_TYPE_MAPPING:
                     out_value = jvmspec.ARRAY_TYPE_MAPPING[value]
                 else:
                     out_value = u"unknown:%d" % value
             elif info_type == 'o':
                 out_value = u"%d" % (ii + value)
-            elif info_type == 'a':
+            elif info_type == 'l':
                 out_value = u"%d" % value
             elif info_type == '0':
                 assert value == 0
