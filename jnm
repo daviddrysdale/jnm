@@ -78,42 +78,63 @@ class Symbol(object):
     DEF_SYMTYPES = set((CLASS, DATA, CODE, INSTANCE_DATA))
     REF_SYMTYPES = set((REF_CLASS, REF_DATA, REF_CODE, REF_INSTANCE_DATA))
 
-    def __init__(self, value, symtype, name, expanded_name=None):
+    def __init__(self, value, symtype, jcls, symname, descriptor):
         self.value = value
         self.symtype = symtype
-        self.name = name
-        if expanded_name is not None:
-            self.expanded_name = expanded_name
+        # Class owning the symbol
+        self.jcls = jcls
+        # Unqualified name of the symbol.  Non-unique even within a class
+        # (method overloading means that the signature is needed for
+        # uniqueness)
+        self.symname = symname
+        # Descriptor of the symbol (None for Classes)
+        self.descriptor = descriptor
+
+        if self.symtype.upper() == Symbol.CLASS or self.symtype.upper() == Symbol.REF_CLASS:
+            self.unique_name = self.jcls
         else:
-            self.expanded_name = self.name
+            self.unique_name = "%s.%s:%s" % (self.jcls, self.symname, self.descriptor)
+            # (don't actually need the :<descriptor> suffix to make fields unique)
 
     def __hash__(self):
-        return hash(self.value) ^ hash(self.symtype) ^ hash(self.name)
+        return hash(self.value) ^ hash(self.symtype) ^ hash(self.unique_name)
 
     def __eq__(self, other):
         if not isinstance(other, Symbol):
             return False
         return (self.value == other.value and
                 self.symtype == other.symtype and
-                self.name == other.name)
+                self.unique_name == other.unique_name)
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __unicode__(self):
         if self.value is None:
-            return u"         %s %s" % (self.symtype, self.name)
+            intro = u"        "
         else:
-            return u"%08x %s %s" % (self.value, self.symtype, self.name)
+            intro = u"%08x" % self.value
+        if self.symtype.upper() == Symbol.CLASS or self.symtype.upper() == Symbol.REF_CLASS:
+            return u"%s %s %s" % (intro, self.symtype, self.jcls)
+        else:
+            return u"%s %s %s.%s:%s" % (intro, self.symtype, self.jcls, self.symname, self.descriptor)
 
     def demangled(self):
         if self.value is None:
-            return u"         %s %s" % (self.symtype, self.expanded_name)
+            intro = u"        "
         else:
-            return u"%08x %s %s" % (self.value, self.symtype, self.expanded_name)
+            intro = u"%08x" % self.value
+        if self.symtype.upper() == Symbol.CLASS or self.symtype.upper() == Symbol.REF_CLASS:
+            return u"%s %s %s" % (intro, self.symtype, self.jcls)
+        elif self.symtype.upper() == Symbol.CODE or self.symtype.upper() == Symbol.REF_CODE:
+            params, return_type = demangle_method_descriptor(self.descriptor)
+            return u"%s %s %s %s.%s(%s)" % (intro, self.symtype, return_type, self.jcls, self.symname, u", ".join(params))
+        else:  # field, static or otherwise
+            field_type, _ = demangle_field_descriptor(self.descriptor)
+            return u"%s %s %s %s.%s" % (intro, self.symtype, field_type, self.jcls, self.symname)
 
 
-def visibility(t_code, access_flags):
+def adjust_visibility(t_code, access_flags):
     if access_flags & jvmspec.PRIVATE:
         return t_code.lower()
     else:
@@ -152,13 +173,15 @@ def _FieldInfo_dump(self):
         symtype = Symbol.DATA
     else:
         symtype = Symbol.INSTANCE_DATA
-    name = u"%s.%s" % (fqcn(unicode(self.class_file.this_class)),
-                      unicode(self.class_file.constants[self.name_index - 1]))
+    jcls = fqcn(unicode(self.class_file.this_class))
+    symname=  unicode(self.class_file.constants[self.name_index - 1])
+    fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     return Symbol(size_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1])),
-                  visibility(symtype, self.access_flags),
-                  u"%s:%s" % (name, descriptor),
-                  u"%s %s" % (jvmspec.demangle_field_descriptor(descriptor)[0], name))
+                  adjust_visibility(symtype, self.access_flags),
+                  jcls,
+                  symname,
+                  descriptor)
 FieldInfo.dump = _FieldInfo_dump
 
 
@@ -173,14 +196,16 @@ def _MethodInfo_dump(self):
             size = len(attr.code)
         elif isinstance(attr, ExceptionsAttributeInfo):
             exc_attr = attr
-    name = u"%s.%s" % (fqcn(unicode(self.class_file.this_class)),
-                      unicode(self.class_file.constants[self.name_index - 1]))
+    jcls = fqcn(unicode(self.class_file.this_class))
+    symname=  unicode(self.class_file.constants[self.name_index - 1])
+    fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     params, return_type = jvmspec.demangle_method_descriptor(descriptor)
     results = [Symbol(size,
-                      visibility(Symbol.CODE, self.access_flags),
-                      u"%s:%s" % (name, self.get_descriptor()),
-                      u"%s %s(%s)" % (return_type, name, u", ".join(params)))]
+                      adjust_visibility(Symbol.CODE, self.access_flags),
+                      jcls,
+                      symname,
+                      self.get_descriptor())]
     if code_attr is not None:
         results.extend(code_attr.dump())
     if exc_attr is not None:
@@ -252,25 +277,19 @@ def _CodeAttributeInfo_dump(self):
             symtype = Symbol.REF_DATA
         if symtype is not None:
             assert info_types[0] == "c"
-            descriptor, jcls, name = findref(self.class_file, values[0])
+            descriptor, jcls, symname = findref(self.class_file, values[0])
             if jcls is not None:
                 if symtype == Symbol.REF_DATA or symtype == Symbol.REF_INSTANCE_DATA:
-                    expanded_descriptor = jvmspec.demangle_field_descriptor(descriptor)[0]
-                    results.append(Symbol(None, symtype,
-                                          u"%s.%s:%s" % (jcls, name, descriptor),
-                                          u"%s %s.%s" % (expanded_descriptor, jcls, name)))
+                    results.append(Symbol(None, symtype, jcls, symname, descriptor))
                 elif symtype == Symbol.REF_CODE:
-                    params, return_type = jvmspec.demangle_method_descriptor(descriptor)
-                    results.append(Symbol(None, symtype,
-                                          u"%s.%s:%s" % (jcls, name, descriptor),
-                                          u"%s %s.%s(%s)" % (return_type, jcls, name, u", ".join(params))))
-                else:
-                    results.append(Symbol(None, symtype, jcls))
+                    results.append(Symbol(None, symtype, jcls, symname, descriptor))
+                else:  # Symbol.REF_CLASS
+                    results.append(Symbol(None, symtype, jcls, jcls, None))
         ii += op_size + 1
     for exc in self.exception_table:
         if exc.catch_type != 0:
-            descriptor, jcls, name = findref(self.class_file, exc.catch_type)
-            results.append(Symbol(None, Symbol.REF_CLASS, jcls))
+            descriptor, jcls, symname = findref(self.class_file, exc.catch_type)
+            results.append(Symbol(None, Symbol.REF_CLASS, jcls, jcls, None))
     return results
 CodeAttributeInfo.dump = _CodeAttributeInfo_dump
 
@@ -279,7 +298,7 @@ def _ExceptionsAttributeInfo_dump(self):
     results = []
     for exc_idx in self.exception_index_table:
         descriptor, jcls, name = findref(self.class_file, exc_idx)
-        results.append(Symbol(None, Symbol.REF_CLASS, jcls))
+        results.append(Symbol(None, Symbol.REF_CLASS, jcls, jcls, None))
     return results
 ExceptionsAttributeInfo.dump = _ExceptionsAttributeInfo_dump
 
@@ -319,29 +338,29 @@ def resolve_class(symlist):
             seen[jcls].add(syminfo)
             deduped.append((jarfile, classfile, syminfo))
             if syminfo.symtype.upper() == Symbol.CLASS:
-                classes[jcls][syminfo.name] = syminfo
+                classes[jcls][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.DATA:
-                fields[jcls][syminfo.name] = syminfo
+                fields[jcls][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
-                fields[jcls][syminfo.name] = syminfo
+                fields[jcls][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.CODE:
-                methods[jcls][syminfo.name] = syminfo
+                methods[jcls][syminfo.unique_name] = syminfo
 
     # Remove references where there is a matching definition
     resolved = []
     for jarfile, classfile, syminfo in deduped:
         jcls = (jarfile, classfile)
         if (syminfo.symtype.upper() == Symbol.REF_CLASS and
-            syminfo.name in classes[jcls]):
+            syminfo.unique_name in classes[jcls]):
             pass
         elif (syminfo.symtype.upper() == Symbol.REF_DATA and
-              syminfo.name in fields[jcls]):
+              syminfo.unique_name in fields[jcls]):
             pass
         elif (syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA and
-              syminfo.name in fields[jcls]):
+              syminfo.unique_name in fields[jcls]):
             pass
         elif (syminfo.symtype.upper() == Symbol.REF_CODE and
-              syminfo.name in methods[jcls]):
+              syminfo.unique_name in methods[jcls]):
             pass
         else:
             resolved.append((jarfile, classfile, syminfo))
