@@ -174,7 +174,7 @@ def _FieldInfo_dump(self):
     else:
         symtype = Symbol.INSTANCE_DATA
     jcls = fqcn(unicode(self.class_file.this_class))
-    symname=  unicode(self.class_file.constants[self.name_index - 1])
+    symname = unicode(self.class_file.constants[self.name_index - 1])
     fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     return Symbol(size_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1])),
@@ -197,7 +197,7 @@ def _MethodInfo_dump(self):
         elif isinstance(attr, ExceptionsAttributeInfo):
             exc_attr = attr
     jcls = fqcn(unicode(self.class_file.this_class))
-    symname=  unicode(self.class_file.constants[self.name_index - 1])
+    symname = unicode(self.class_file.constants[self.name_index - 1])
     fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     params, return_type = jvmspec.demangle_method_descriptor(descriptor)
@@ -303,8 +303,22 @@ def _ExceptionsAttributeInfo_dump(self):
 ExceptionsAttributeInfo.dump = _ExceptionsAttributeInfo_dump
 
 
+_class_parent = {}  # classname: classname for superclass
+_class_interfaces = {}  # classname: list of classnames for implemented interfaces
+
+
 def _ClassFile_dump(self):
-    results = [Symbol(self.size, Symbol.CLASS, fqcn(unicode(self.this_class)))]
+    jcls = fqcn(unicode(self.this_class))
+    super_class = fqcn(unicode(self.super_class))
+    results = [Symbol(self.size, Symbol.CLASS, jcls, jcls, None),
+               Symbol(None, Symbol.REF_CLASS, super_class, super_class, None)]
+    results.extend([Symbol(None,
+                           Symbol.REF_CLASS,
+                           fqcn(unicode(interf)),
+                           fqcn(unicode(interf)),
+                           None) for interf in self.interfaces])
+    _class_parent[fqcn(unicode(self.this_class))] = super_class
+    _class_interfaces[fqcn(unicode(self.this_class))] = [fqcn(unicode(interf)) for interf in self.interfaces]
     for f in self.fields:
         f_info = f.dump()
         if f_info is not None:
