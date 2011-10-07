@@ -378,7 +378,64 @@ def resolve_class(symlist):
             pass
         else:
             resolved.append((jarfile, classfile, syminfo))
+        # Within the scope of a single class, a reference to a field or
+        # method of that class may be unresolved, because the field or
+        # method is inherited.  We have no way of determining which
+        # of the superclass + implemented interfaces the reference comes
+        # from.
+        #  - Instance fields have to come from a superclass
+        #  - Static fields can come from a superclass, or an interface if
+        #    they are const
+        #  - Methods can come from either a superclass or an interface.
+        # So leave the reference as <this_class>.<name>
     return resolved
+
+
+def find_owner_superclass_interfaces(symbols, syminfo):
+    if syminfo.unique_name in symbols:
+        return symbols[syminfo.unique_name]
+    if syminfo.jcls == "java.lang.Object":
+        return None
+    potentials = [_class_parent.get(syminfo.jcls, "java.lang.Object")]
+    potentials.extend(_class_interfaces.get(syminfo.jcls, []))
+    for potential in potentials:
+        parent_syminfo = Symbol(syminfo.value,
+                                syminfo.symtype,
+                                potential,
+                                syminfo.symname,
+                                syminfo.descriptor)
+        parent_resolve = find_owner_superclass_interfaces(symbols, parent_syminfo)
+        if parent_resolve is not None:
+            return parent_resolve
+    return None
+
+
+def find_owner_superclass(symbols, syminfo):
+    if syminfo.unique_name in symbols:
+        return symbols[syminfo.unique_name]
+    if _class_parent.get(syminfo.jcls, "java.lang.Object") == "java.lang.Object":
+        return None
+    parent_syminfo = Symbol(syminfo.value,
+                            syminfo.symtype,
+                            _class_parent[syminfo.jcls],
+                            syminfo.symname,
+                            syminfo.descriptor)
+    return find_owner_field(symbols, parent_syminfo)
+
+
+def find_owner_field(fields, syminfo):
+    assert syminfo.symtype == Symbol.REF_INSTANCE_DATA
+    return find_owner_superclass(fields, syminfo)
+
+
+def find_owner_static_field(fields, syminfo):
+    assert syminfo.symtype == Symbol.REF_DATA
+    return find_owner_superclass_interfaces(fields, syminfo)
+
+
+def find_owner_method(methods, syminfo):
+    assert syminfo.symtype == Symbol.REF_CODE
+    return find_owner_superclass_interfaces(methods, syminfo)
 
 
 def resolve_all(symlist):
@@ -394,30 +451,32 @@ def resolve_all(symlist):
             seen.add(syminfo)
             deduped.append((jarfile, classfile, syminfo))
             if syminfo.symtype.upper() == Symbol.CLASS:
-                classes[syminfo.name] = syminfo
+                classes[syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.DATA:
-                fields[syminfo.name] = syminfo
+                fields[syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
-                fields[syminfo.name] = syminfo
+                fields[syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.CODE:
-                methods[syminfo.name] = syminfo
+                methods[syminfo.unique_name] = syminfo
 
     # Remove references where there is a matching definition
     resolved = []
     for jarfile, classfile, syminfo in deduped:
-        if (syminfo.symtype.upper() == Symbol.REF_CLASS and
-            syminfo.name in classes):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_DATA and
-              syminfo.name in fields):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA and
-              syminfo.name in fields):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_CODE and
-              syminfo.name in methods):
-            pass
-        else:
+        sym_resolved = False
+        if syminfo.symtype.upper() == Symbol.REF_CLASS:
+            if syminfo.unique_name in classes:
+                sym_resolved = True
+        elif syminfo.symtype.upper() == Symbol.REF_DATA:
+            if find_owner_static_field(fields, syminfo) is not None:
+                sym_resolved = True
+        elif syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA:
+            if find_owner_field(fields, syminfo) is not None:
+                sym_resolved = True
+        elif syminfo.symtype.upper() == Symbol.REF_CODE:
+            if find_owner_method(methods, syminfo) is not None:
+                sym_resolved = True
+
+        if not sym_resolved:
             resolved.append((jarfile, classfile, syminfo))
     return resolved
 

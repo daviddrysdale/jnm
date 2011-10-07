@@ -6,7 +6,8 @@
   CLOSED: [2011-10-04 Tue 20:01]
 * DONE option for jnm to resolve within jar files...flatten option to make all the symbols be in one big namespace
   CLOSED: [2011-10-05 Wed 20:13]
-* TODO fix output for unresolved ref to field/method in superclass of this
+* DONE fix output for unresolved ref to field/method in superclass of this
+  CLOSED: [2011-10-07 Fri 20:29]
 * DONE have a separate demangle command that output can be piped to
   CLOSED: [2011-10-05 Wed 21:01]
 * DONE check exception processing -- are there references needed there?
