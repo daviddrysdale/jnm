@@ -55,9 +55,9 @@ class NMOpts(_Opts):
 
     def __init__(self, message):
         self.message = message
-        self.filters = [resolve_class]
+        self.filters = set([resolve_class])
         self.sorts = []
-        self.displays = [normal_display]
+        self.displays = set([normal_display])
 
     def process_opt(self, opt, arg):
         if super(NMOpts, self).process_opt(opt, arg):

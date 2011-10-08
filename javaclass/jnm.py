@@ -415,6 +415,7 @@ def find_owner_method(methods, syminfo):
     return find_owner_superclass_interfaces(methods, syminfo)
 
 
+# Filter functions; take a list of 3-tuples (jarfile, classfile, symbol)
 def resolve_all(symlist):
     """Remove duplicate symbol info and resolve internal references across all classes"""
     seen = set()
@@ -466,17 +467,16 @@ def remove_undefined(symlist):
     return [sym for sym in symlist if sym[2].symtype.upper() in Symbol.DEF_SYMTYPES]
 
 
-def remove_undefined(symlist):
-    return [sym for sym in symlist if sym[2].symtype.upper() in Symbol.DEF_SYMTYPES]
-
-
 def remove_private(symlist):
     return [sym for sym in symlist if sym[2].symtype.isupper()]
+
+# All filter functions in the order they should be applied
+ALL_FILTER_FNS = (resolve_class, resolve_all, remove_private, remove_defined, remove_undefined)
 
 
 # Sort functions; take a list of 3-tuples (jarfile, classfile, symbol)
 def alphabetic_sort(symlist):
-    return sorted(symlist, key=lambda x: x[2].name)
+    return sorted(symlist, key=lambda x: x[2].symname)
 
 
 def numeric_sort(symlist):
@@ -511,10 +511,19 @@ def name_only(jarfile, filename, sym, current):
 def demangle(jarfile, filename, sym, current):
     return sym.demangled()
 
+# All the display functions, in the order they should be applied
+ALL_DISPLAY_FNS = (name_only, normal_display, demangle, prepend_filename)
+
 
 class _Opts(object):
     # short option, long option, help messsage, filter function, sort function, display function
     OPT_INFO = (("h", "help", "show this help", None, None, None),)
+
+    def __init__(self, message):
+        self.message = message
+        self.filters = set()
+        self.sorts = []
+        self.displays = set()
 
     def short_opts(self):
         return dict([("-%s" % optinfo[0], optinfo) for optinfo in self.OPT_INFO])
@@ -538,9 +547,14 @@ class _Opts(object):
 
     def process(self, symlist):
         # Apply filters in order
-        for filter in self.filters:
-            symlist = filter(symlist)
-        # Apply sorts in order
+        for filter in ALL_FILTER_FNS:
+            if filter in self.filters:
+                symlist = filter(symlist)
+        # Special case -- pull reverse_sort to the end
+        if reverse_sort in self.sorts:
+            self.sorts.remove(reverse_sort)
+            self.sorts.append(reverse_sort)
+        # Apply sorts in order.
         for sortfn in self.sorts:
             symlist = sortfn(symlist)
         return symlist
@@ -548,8 +562,9 @@ class _Opts(object):
     def display(self, jarfile, filename, sym):
         # Apply display functions in order
         result = None
-        for dispfn in self.displays:
-            result = dispfn(jarfile, filename, sym, result)
+        for dispfn in ALL_DISPLAY_FNS:
+            if dispfn in self.displays:
+                result = dispfn(jarfile, filename, sym, result)
         return result
 
     def process_opt(self, opt, arg):
@@ -560,11 +575,11 @@ class _Opts(object):
         elif opt in class_opts:
             optinfo = class_opts[opt]
             if optinfo[3] is not None:
-                self.filters.append(optinfo[3])
+                self.filters.add(optinfo[3])
             if optinfo[4] is not None:
                 self.sorts.append(optinfo[4])
             if optinfo[5] is not None:
-                self.displays.append(optinfo[5])
+                self.displays.add(optinfo[5])
             return True
         else:
             return False
