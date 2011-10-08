@@ -512,30 +512,18 @@ def demangle(jarfile, filename, sym, current):
     return sym.demangled()
 
 
-class NMOpts(object):
+class _Opts(object):
     # short option, long option, help messsage, filter function, sort function, display function
-    OPT_INFO = (("h", "help", "show this help", None, None, None),
-                # Sort options
-                ("p", "no-sort", "Don't sort; display in order encountered (default)", None, noop_sort, None),
-                ("n", "numeric-sort", "Sort symbols numerically", None, numeric_sort, None),
-                ("r", "reverse-sort", "Sort in reverse order", None, reverse_sort, None),
-                ("a", "alpha-sort", "Sort alphabetically", None, alphabetic_sort, None),
-                # Filter options
-                ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
-                ("U", "defined-only", "Don't display undefined symbols", remove_undefined, None, None),
-                ("g", "extern-only", "Don't display external (non-private) symbols", remove_private, None, None),
-                ("f", "flatten", "Resolve references within the set of files specified", resolve_all, None, None),
-                # Display options
-                ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
-                ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
-                ("C", "demangle", "Decode symbol names into user-visible names", None, None, demangle),
-                # Special options
-                ("", "m64", "Assume pointers are 64-bit (default)", None, None, None),
-                ("", "m32", "Assume pointers are 32-bit", None, None, None),
-                )
-    SHORT_OPTS = dict([("-%s" % optinfo[0], optinfo) for optinfo in OPT_INFO])
-    LONG_OPTS = dict([("--%s" % optinfo[1], optinfo) for optinfo in OPT_INFO])
-    ALL_OPTS = dict(SHORT_OPTS.items() + LONG_OPTS.items())
+    OPT_INFO = (("h", "help", "show this help", None, None, None),)
+
+    def short_opts(self):
+        return dict([("-%s" % optinfo[0], optinfo) for optinfo in self.OPT_INFO])
+
+    def long_opts(self):
+        return dict([("--%s" % optinfo[1], optinfo) for optinfo in self.OPT_INFO])
+
+    def all_opts(self):
+        return dict(self.short_opts().items() + self.long_opts().items())
 
     def usage(self, err):
         """Print usage message"""
@@ -547,41 +535,6 @@ class NMOpts(object):
             else:
                 print >> sys.stderr, "   --%-19s : %s" % (optinfo[1], optinfo[2])
         sys.exit(err)
-
-    def __init__(self, message):
-        self.message = message
-        self.filters = [resolve_class]
-        self.sorts = []
-        self.displays = [normal_display]
-
-    def getopts(self, argv):
-        try:
-            opts, args = getopt.getopt(argv,
-                                       "".join([optinfo[0] for optinfo in self.OPT_INFO]),
-                                       [optinfo[1] for optinfo in self.OPT_INFO])
-        except getopt.GetoptError:
-            self.usage(2)
-        for opt, arg in opts:
-            if opt in ("-h", "--help"):
-                self.usage(0)
-            elif opt in ("-p", "--sort-natural"):
-                self.sorts = []
-            elif opt == "--m32":
-                jvmspec.set_pointer_size(4)
-            elif opt == "--m64":
-                jvmspec.set_pointer_size(8)
-            elif opt in self.ALL_OPTS:
-                optinfo = self.ALL_OPTS[opt]
-                if optinfo[3] is not None:
-                    self.filters.append(optinfo[3])
-                if optinfo[4] is not None:
-                    self.sorts.append(optinfo[4])
-                if optinfo[5] is not None:
-                    self.displays.append(optinfo[5])
-            else:
-                print >> sys.stderr, "Unknown option %s" % opt
-                self.usage(1)
-        return args
 
     def process(self, symlist):
         # Apply filters in order
@@ -598,3 +551,35 @@ class NMOpts(object):
         for dispfn in self.displays:
             result = dispfn(jarfile, filename, sym, result)
         return result
+
+    def process_opt(self, opt, arg):
+        class_opts = self.all_opts()
+        if opt in ("-h", "--help"):
+            self.usage(0)
+            return True
+        elif opt in class_opts:
+            optinfo = class_opts[opt]
+            if optinfo[3] is not None:
+                self.filters.append(optinfo[3])
+            if optinfo[4] is not None:
+                self.sorts.append(optinfo[4])
+            if optinfo[5] is not None:
+                self.displays.append(optinfo[5])
+            return True
+        else:
+            return False
+
+    def getopts(self, argv):
+        try:
+            opts, args = getopt.getopt(argv,
+                                       "".join([optinfo[0] for optinfo in self.OPT_INFO]),
+                                       [optinfo[1] for optinfo in self.OPT_INFO])
+        except getopt.GetoptError:
+            self.usage(2)
+        for opt, arg in opts:
+            if self.process_opt(opt, arg):
+                pass
+            else:
+                print >> sys.stderr, "Unknown option %s" % opt
+                self.usage(1)
+        return args

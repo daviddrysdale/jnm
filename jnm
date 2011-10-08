@@ -26,7 +26,53 @@ import sys
 
 from javaclass.classfile import ClassFile
 from javaclass.jarfile import jar_classes
-from javaclass.jnm import NMOpts, prepend_filename
+from javaclass.jnm import _Opts
+from javaclass.jnm import numeric_sort, reverse_sort, alphabetic_sort, noop_sort
+from javaclass.jnm import remove_defined, remove_undefined, remove_private, resolve_all, resolve_class
+from javaclass.jnm import prepend_filename, name_only, demangle, normal_display
+
+
+class NMOpts(_Opts):
+    OPT_INFO = (_Opts.OPT_INFO +
+                # Sort options
+                (("p", "no-sort", "Don't sort; display in order encountered (default)", None, noop_sort, None),
+                 ("n", "numeric-sort", "Sort symbols numerically", None, numeric_sort, None),
+                 ("r", "reverse-sort", "Sort in reverse order", None, reverse_sort, None),
+                 ("a", "alpha-sort", "Sort alphabetically", None, alphabetic_sort, None),
+                 # Filter options
+                 ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
+                 ("U", "defined-only", "Don't display undefined symbols", remove_undefined, None, None),
+                 ("g", "extern-only", "Don't display external (non-private) symbols", remove_private, None, None),
+                 ("f", "flatten", "Resolve references within the set of files specified", resolve_all, None, None),
+                 # Display options
+                 ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),
+                 ("j", "symbols-only", "Just display the symbol names (no value or type)", None, None, name_only),
+                 ("C", "demangle", "Decode symbol names into user-visible names", None, None, demangle),
+                 # Special options
+                 ("", "m64", "Assume pointers are 64-bit (default)", None, None, None),
+                 ("", "m32", "Assume pointers are 32-bit", None, None, None),
+                 ))
+
+    def __init__(self, message):
+        self.message = message
+        self.filters = [resolve_class]
+        self.sorts = []
+        self.displays = [normal_display]
+
+    def process_opt(self, opt, arg):
+        if super(NMOpts, self).process_opt(opt, arg):
+            return True
+        elif opt in ("-p", "--no-sort"):
+            self.sorts = []
+            return True
+        elif opt == "--m32":
+            jvmspec.set_pointer_size(4)
+            return True
+        elif opt == "--m64":
+            jvmspec.set_pointer_size(8)
+            return True
+        else:
+            return False
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
