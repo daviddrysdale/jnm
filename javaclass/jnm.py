@@ -492,10 +492,10 @@ class _Opts(object):
         self.displays = set()
 
     def short_opts(self):
-        return dict([("-%s" % optinfo[0], optinfo) for optinfo in self.OPT_INFO])
+        return dict([("-%s" % optinfo[0].replace(':',''), optinfo) for optinfo in self.OPT_INFO])
 
     def long_opts(self):
-        return dict([("--%s" % optinfo[1], optinfo) for optinfo in self.OPT_INFO])
+        return dict([("--%s" % optinfo[1].replace('=', ''), optinfo) for optinfo in self.OPT_INFO])
 
     def all_opts(self):
         return dict(self.short_opts().items() + self.long_opts().items())
@@ -506,9 +506,12 @@ class _Opts(object):
         print >> sys.stderr, "Options:"
         for optinfo in self.OPT_INFO:
             if len(optinfo[0]) > 0:
-                print >> sys.stderr, "   -%s/--%-16s : %s" % (optinfo[0], optinfo[1], optinfo[2])
+                print >> sys.stderr, "   -%s/--%-18s : %s" % (optinfo[0].replace(':',''), 
+                                                              optinfo[1].replace('=',' arg'), 
+                                                              optinfo[2])
             else:
-                print >> sys.stderr, "   --%-19s : %s" % (optinfo[1], optinfo[2])
+                print >> sys.stderr, "   --%-21s : %s" % (optinfo[1].replace('=',' arg'), 
+                                                          optinfo[2])
         sys.exit(err)
 
     def process(self, symlist):
