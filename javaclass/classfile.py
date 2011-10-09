@@ -994,7 +994,7 @@ class LocalVariableInfo(object):
         return data[10:]
 
     def get_descriptor(self):
-        return get_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1]))
+        return unicode(self.class_file.constants[self.descriptor_index - 1])
 
     def serialize(self):
         return su2(self.start_pc) + su2(self.length) + su2(self.name_index) + su2(self.descriptor_index) + su2(self.index)

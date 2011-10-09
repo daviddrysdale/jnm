@@ -151,7 +151,6 @@ def _FieldInfo_dump(self):
         symtype = Symbol.INSTANCE_DATA
     jcls = fqcn(unicode(self.class_file.this_class))
     symname = unicode(self.class_file.constants[self.name_index - 1])
-    fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     return Symbol(size_field_descriptor(unicode(self.class_file.constants[self.descriptor_index - 1])),
                   adjust_visibility(symtype, self.access_flags),
@@ -174,7 +173,6 @@ def _MethodInfo_dump(self):
             exc_attr = attr
     jcls = fqcn(unicode(self.class_file.this_class))
     symname = unicode(self.class_file.constants[self.name_index - 1])
-    fullname = u"%s.%s" % (jcls, symname)
     descriptor = self.get_descriptor()
     params, return_type = jvmspec.demangle_method_descriptor(descriptor)
     results = [Symbol(size,
@@ -492,7 +490,7 @@ class _Opts(object):
         self.displays = set()
 
     def short_opts(self):
-        return dict([("-%s" % optinfo[0].replace(':',''), optinfo) for optinfo in self.OPT_INFO])
+        return dict([("-%s" % optinfo[0].replace(':', ''), optinfo) for optinfo in self.OPT_INFO])
 
     def long_opts(self):
         return dict([("--%s" % optinfo[1].replace('=', ''), optinfo) for optinfo in self.OPT_INFO])
@@ -506,11 +504,11 @@ class _Opts(object):
         print >> sys.stderr, "Options:"
         for optinfo in self.OPT_INFO:
             if len(optinfo[0]) > 0:
-                print >> sys.stderr, "   -%s/--%-18s : %s" % (optinfo[0].replace(':',''), 
-                                                              optinfo[1].replace('=',' arg'), 
+                print >> sys.stderr, "   -%s/--%-18s : %s" % (optinfo[0].replace(':', ''),
+                                                              optinfo[1].replace('=', ' arg'),
                                                               optinfo[2])
             else:
-                print >> sys.stderr, "   --%-21s : %s" % (optinfo[1].replace('=',' arg'), 
+                print >> sys.stderr, "   --%-21s : %s" % (optinfo[1].replace('=', ' arg'),
                                                           optinfo[2])
         sys.exit(err)
 
