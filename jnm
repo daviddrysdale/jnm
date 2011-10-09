@@ -29,7 +29,8 @@ from javaclass.classfile import ClassFile
 from javaclass.jarfile import jar_classes
 from javaclass.jnm import _Opts
 from javaclass.jnm import numeric_sort, reverse_sort, alphabetic_sort, noop_sort
-from javaclass.jnm import remove_defined, remove_undefined, remove_private, resolve_all, resolve_class
+from javaclass.jnm import remove_defined, remove_undefined, remove_private, remove_nonclass
+from javaclass.jnm import resolve_all, resolve_class
 from javaclass.jnm import prepend_filename, name_only, demangle, normal_display
 
 
@@ -44,6 +45,7 @@ class NMOpts(_Opts):
                  ("u", "undefined-only", "Display only undefined symbols", remove_defined, None, None),
                  ("U", "defined-only", "Don't display undefined symbols", remove_undefined, None, None),
                  ("g", "extern-only", "Don't display external (non-private) symbols", remove_private, None, None),
+                 ("c", "class-only", "Only display classes, not fields or methods", remove_nonclass, None, None),
                  ("f", "flatten", "Resolve references within the set of files specified", resolve_all, None, None),
                  # Display options
                  ("A", "print-file-name", "Write the pathname on each line", None, None, prepend_filename),

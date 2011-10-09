@@ -423,6 +423,23 @@ def resolve_all(symlist):
     return _resolve_scope(lambda x, y: None, symlist)
 
 
+def remove_nonclass(symlist):
+    results = []
+    for jarfile, classfile, syminfo in symlist:
+        if (syminfo.symtype.upper() == Symbol.CLASS or
+            syminfo.symtype.upper() == Symbol.REF_CLASS):
+            results.append((jarfile, classfile, syminfo))
+        # convert a reference to a field or method in a class to a reference to owning class
+        elif syminfo.symtype.upper() in Symbol.REF_SYMTYPES:
+            results.append((jarfile, classfile,
+                            Symbol(None,
+                                   Symbol.REF_CLASS,
+                                   syminfo.jcls,
+                                   syminfo.jcls,
+                                   None)))
+    return results
+
+
 def remove_defined(symlist):
     return [sym for sym in symlist if sym[2].symtype.upper() not in Symbol.DEF_SYMTYPES]
 
@@ -435,7 +452,7 @@ def remove_private(symlist):
     return [sym for sym in symlist if sym[2].symtype.isupper()]
 
 # All filter functions in the order they should be applied
-ALL_FILTER_FNS = (resolve_class, resolve_all, remove_private, remove_defined, remove_undefined)
+ALL_FILTER_FNS = (remove_nonclass, resolve_class, resolve_all, remove_private, remove_defined, remove_undefined)
 
 
 # Sort functions; take a list of 3-tuples (jarfile, classfile, symbol)
