@@ -452,7 +452,7 @@ def remove_private(symlist):
     return [sym for sym in symlist if sym[2].symtype.isupper()]
 
 # All filter functions in the order they should be applied
-ALL_FILTER_FNS = (remove_nonclass, resolve_class, resolve_all, remove_private, remove_defined, remove_undefined)
+ALL_FILTER_FNS = (remove_nonclass, resolve_class, resolve_jar, resolve_all, remove_private, remove_defined, remove_undefined)
 
 
 # Sort functions; take a list of 3-tuples (jarfile, classfile, symbol)
