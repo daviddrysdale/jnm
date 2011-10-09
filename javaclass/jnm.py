@@ -25,10 +25,9 @@ from jvmspec import demangle_method_descriptor
 from jvmspec import demangle_field_descriptor
 from jvmspec import size_field_descriptor
 from classfile import (ClassInfo, FieldRefInfo, MethodRefInfo,
-                       DoubleInfo, FieldInfo, MethodInfo,
+                       FieldInfo, MethodInfo,
                        CodeAttributeInfo, ExceptionsAttributeInfo,
                        ClassFile)
-from jarfile import jar_classes
 
 
 class Symbol(object):
