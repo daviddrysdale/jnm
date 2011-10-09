@@ -63,9 +63,7 @@ class NMOpts(_Opts):
         self.displays = set([normal_display])
 
     def process_opt(self, opt, arg):
-        if super(NMOpts, self).process_opt(opt, arg):
-            return True
-        elif opt in ("-p", "--no-sort"):
+        if opt in ("-p", "--no-sort"):
             self.sorts = []
             return True
         elif opt == "--m32":
@@ -73,6 +71,8 @@ class NMOpts(_Opts):
             return True
         elif opt == "--m64":
             jvmspec.set_pointer_size(8)
+            return True
+        elif super(NMOpts, self).process_opt(opt, arg):
             return True
         else:
             return False
