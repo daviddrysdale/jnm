@@ -307,66 +307,6 @@ def _ClassFile_dump(self):
 ClassFile.dump = _ClassFile_dump
 
 
-# Filter functions; take a list of 3-tuples (jarfile, classfile, symbol)
-def resolve_class(symlist):
-    """Remove duplicate symbol info and resolve internal references within each class"""
-    # Remove duplicates and track definitions
-    deduped = []
-    # Each of the following maps from (jarfile, classfile) to a map of name: symbol
-    seen = {}
-    fields = {}
-    methods = {}
-    classes = {}
-    for jarfile, classfile, syminfo in symlist:
-        jcls = (jarfile, classfile)
-        if jcls not in seen:
-            seen[jcls] = set()
-            fields[jcls] = {}
-            methods[jcls] = {}
-            classes[jcls] = {}
-        if syminfo not in seen[jcls]:
-            seen[jcls].add(syminfo)
-            deduped.append((jarfile, classfile, syminfo))
-            if syminfo.symtype.upper() == Symbol.CLASS:
-                classes[jcls][syminfo.unique_name] = syminfo
-            elif syminfo.symtype.upper() == Symbol.DATA:
-                fields[jcls][syminfo.unique_name] = syminfo
-            elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
-                fields[jcls][syminfo.unique_name] = syminfo
-            elif syminfo.symtype.upper() == Symbol.CODE:
-                methods[jcls][syminfo.unique_name] = syminfo
-
-    # Remove references where there is a matching definition
-    resolved = []
-    for jarfile, classfile, syminfo in deduped:
-        jcls = (jarfile, classfile)
-        if (syminfo.symtype.upper() == Symbol.REF_CLASS and
-            syminfo.unique_name in classes[jcls]):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_DATA and
-              syminfo.unique_name in fields[jcls]):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA and
-              syminfo.unique_name in fields[jcls]):
-            pass
-        elif (syminfo.symtype.upper() == Symbol.REF_CODE and
-              syminfo.unique_name in methods[jcls]):
-            pass
-        else:
-            resolved.append((jarfile, classfile, syminfo))
-        # Within the scope of a single class, a reference to a field or
-        # method of that class may be unresolved, because the field or
-        # method is inherited.  We have no way of determining which
-        # of the superclass + implemented interfaces the reference comes
-        # from.
-        #  - Instance fields have to come from a superclass
-        #  - Static fields can come from a superclass, or an interface if
-        #    they are const
-        #  - Methods can come from either a superclass or an interface.
-        # So leave the reference as <this_class>.<name>
-    return resolved
-
-
 def find_owner_superclass_interfaces(symbols, syminfo):
     if syminfo.unique_name in symbols:
         return symbols[syminfo.unique_name]
@@ -414,48 +354,75 @@ def find_owner_method(methods, syminfo):
     return find_owner_superclass_interfaces(methods, syminfo)
 
 
-# Filter functions; take a list of 3-tuples (jarfile, classfile, symbol)
-def resolve_all(symlist):
+def _resolve_scope(scopefn, symlist):
     """Remove duplicate symbol info and resolve internal references across all classes"""
-    seen = set()
+    # Pass 1: Remove duplicates and track definitions
+    deduped = []
+    seen = {}  # map from scope to set of seen symbols
+    # Each of the following maps from <scope> to a dict of name: symbol
     fields = {}
     methods = {}
     classes = {}
-    # Remove duplicates and track definitions
-    deduped = []
     for jarfile, classfile, syminfo in symlist:
-        if syminfo not in seen:
-            seen.add(syminfo)
+        scope = scopefn(jarfile, classfile)
+        if scope not in seen:
+            seen[scope] = set()
+            fields[scope] = {}
+            methods[scope] = {}
+            classes[scope] = {}
+        if syminfo not in seen[scope]:
+            seen[scope].add(syminfo)
             deduped.append((jarfile, classfile, syminfo))
             if syminfo.symtype.upper() == Symbol.CLASS:
-                classes[syminfo.unique_name] = syminfo
+                classes[scope][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.DATA:
-                fields[syminfo.unique_name] = syminfo
+                fields[scope][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.INSTANCE_DATA:
-                fields[syminfo.unique_name] = syminfo
+                fields[scope][syminfo.unique_name] = syminfo
             elif syminfo.symtype.upper() == Symbol.CODE:
-                methods[syminfo.unique_name] = syminfo
+                methods[scope][syminfo.unique_name] = syminfo
 
-    # Remove references where there is a matching definition
+    # Pass 2: Remove references where there is a matching definition
     resolved = []
     for jarfile, classfile, syminfo in deduped:
+        scope = scopefn(jarfile, classfile)
         sym_resolved = False
         if syminfo.symtype.upper() == Symbol.REF_CLASS:
-            if syminfo.unique_name in classes:
+            # Classes can only be resolved directly
+            if syminfo.unique_name in classes[scope]:
                 sym_resolved = True
         elif syminfo.symtype.upper() == Symbol.REF_DATA:
-            if find_owner_static_field(fields, syminfo) is not None:
+            # Static fields might be resolved in superclass or implemented interface
+            if find_owner_static_field(fields[scope], syminfo) is not None:
                 sym_resolved = True
         elif syminfo.symtype.upper() == Symbol.REF_INSTANCE_DATA:
-            if find_owner_field(fields, syminfo) is not None:
+            # Instance fields might be resolved in superclass
+            if find_owner_field(fields[scope], syminfo) is not None:
                 sym_resolved = True
         elif syminfo.symtype.upper() == Symbol.REF_CODE:
-            if find_owner_method(methods, syminfo) is not None:
+            # Methods might be resolved in superclass or implemented interface
+            if find_owner_method(methods[scope], syminfo) is not None:
                 sym_resolved = True
 
         if not sym_resolved:
             resolved.append((jarfile, classfile, syminfo))
     return resolved
+
+
+# Filter functions; take a list of 3-tuples (jarfile, classfile, symbol)
+def resolve_class(symlist):
+    # Resolve references only within <jarfile, classfile>
+    return _resolve_scope(lambda x, y: (x, y), symlist)
+
+
+def resolve_jar(symlist):
+    # Resolve references within <jarfile>
+    return _resolve_scope(lambda x, y: x, symlist)
+
+
+def resolve_all(symlist):
+    # Resolve references within <>, i.e. across all inputs
+    return _resolve_scope(lambda x, y: None, symlist)
 
 
 def remove_defined(symlist):
