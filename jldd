@@ -6,11 +6,11 @@ jldd displays the package dependencies of each file in the argument list.
 import os
 import sys
 import re
+import zipfile
 
 from javaclass.classfile import ClassFile
 from javaclass.jarfile import jar_classes
 from javaclass.jnm import _Opts, resolve_jar, remove_defined, remove_nonclass
-from javaclass.jnm import normal_display  # @@@ remove
 
 # search for and load classes in order:
 #  - bootstrap classes: java platform, public classes of Java Class Library $JAVA_HOME/jre/lib/*.jar, especially rt.jar
@@ -38,7 +38,7 @@ class LDDOpts(_Opts):
         self.message = message
         self.filters = set([resolve_jar, remove_defined])
         self.sorts = []
-        self.displays = set([normal_display])  # @@@@ remove
+        self.displays = set()
         self.classpath = os.environ.get("CLASSPATH", ".").split(":")
         self.bootclasspath = os.environ.get("JAVA_HOME", ".")  # @@@@
         self.resolve_all = False
@@ -62,9 +62,25 @@ class LDDOpts(_Opts):
 def package_name(jcls):
     idx = jcls.rfind('.')
     if idx == -1:
-        return jcls
+        return None
     else:
         return jcls[:idx]
+
+
+def get_classes(classpath):
+    results = {}  # classname => set of owning jarfiles/top-level directories
+    for top in classpath:
+        if top.endswith(".jar") and os.path.isfile(top):
+            zf = zipfile.ZipFile(top, "r")
+            for info in zf.infolist():
+                filename, ext = os.path.splitext(info.filename)
+                if ext == ".class":
+                    classname = filename.replace(os.sep, ".")
+                    if classname not in results:
+                        results[classname] = top
+        elif os.path.isdir(top):
+            pass  # @@@
+    return results
 
 
 if __name__ == "__main__":
@@ -86,29 +102,55 @@ if __name__ == "__main__":
                     clist = [(arg, ClassFile(f.read()))]
             resultslist = [(jarfile, filename, sym) for filename, c in clist for sym in c.dump()]
 
-        # Resolve references within the set of destination files, return only unresolved-class symbols
-        unresolveds = opts.process(resultslist)
+        # Resolve references within each of the set of destination files, return only unresolved symbols.
+        # Typically (i.e. when opts.resolve_all not set) this is just unresolved class refs.
+        references = opts.process(resultslist)
 
-        # Find the packages corresponding to the classes
-        packages = []
-        ref_to = {}
-        for jarfile, classfile, symbol in unresolveds:
-            if jarfile not in ref_to:
-                ref_to[jarfile] = set()
-            jpkg = package_name(symbol.jcls)
-            if jpkg not in ref_to[jarfile]:
-                ref_to[jarfile].add(jpkg)
-                packages.append((jarfile, jpkg))
-            
-        prev_file = None
-        for jarfile, jpkg in packages:
-            this_file = jarfile
-            if (show_filename_prolog and prev_file != this_file):
+        # Hunt through the classpaths to find all available classes (but do
+        # not look inside those classes)
+        opts.bootclasspath = "/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsfd.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Frameworks/JavaRuntimeSupport.framework/Resources/Java/JavaRuntimeSupport.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/ui.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/laf.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/sunrsasign.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsse.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jce.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/charsets.jar".split(':')
+        # @@@
+        bootclass = get_classes(opts.bootclasspath)
+        jclass = get_classes(opts.classpath)
+
+        if opts.resolve_all:
+            # @@@ alternatively, display the unresolved classes individually?
+            pass  # @@@@
+        else:
+            mappings = []
+            unresolveds = {}
+            ref_to = {}
+            for jarfile, classfile, symbol in references:
                 if jarfile is None:
-                    print "%s:" % classfile
+                    this_file = classfile
                 else:
-                    print "%s:" % jarfile
-                prev_file = this_file
-            print "\t %s => %s" % (jpkg, '@@@')
+                    this_file = jarfile
+                if this_file not in ref_to:
+                    ref_to[this_file] = {}
+                jpkg = package_name(symbol.jcls)
+                if jpkg not in ref_to[this_file]:
+                    ref_to[this_file][jpkg] = set()
+                if symbol.jcls in bootclass:
+                    mappings.append((jarfile, classfile, symbol, bootclass[symbol.jcls]))
+                    ref_to[this_file][jpkg].add(bootclass[symbol.jcls])
+                elif symbol.jcls in jclass:
+                    mappings.append((jarfile, classfile, symbol, jclass[symbol.jcls]))
+                    ref_to[this_file][jpkg].add(jclass[symbol.jcls])
+                else:
+                    if this_file not in unresolveds:
+                        unresolveds[this_file] = []
+                    unresolveds[this_file].append((jarfile, classfile, symbol))
 
-        # @@@ alternatively, display the unresolved classes individually?
+        for filename in filenames:
+            if show_filename_prolog:
+                print "%s:" % filename
+            if filename in ref_to:
+                for jpkg in ref_to[filename]:
+                    if len(ref_to[filename][jpkg]) == 0:
+                        print "\t %s => ???" % jpkg
+                    else:
+                        print "\t %s => %s" % (jpkg, ", ".join(ref_to[filename][jpkg]))
+            if filename in unresolveds:
+                print "Failed to resolve:"
+                for jarfile, classfile, symbol in unresolveds[filename]:
+                    print " %s(%s): %s" % (jarfile, classfile, symbol.unique_name)
