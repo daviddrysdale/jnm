@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+"""jldd [options] file[s]
+
+jldd displays the package dependencies of each file in the argument list.
+"""
+import os
+import sys
+import re
+
+from javaclass.classfile import ClassFile
+from javaclass.jarfile import jar_classes
+from javaclass.jnm import _Opts, resolve_jar, remove_defined, remove_nonclass
+from javaclass.jnm import normal_display  # @@@ remove
+
+# search for and load classes in order:
+#  - bootstrap classes: java platform, public classes of Java Class Library $JAVA_HOME/jre/lib/*.jar, especially rt.jar
+#     on Mac OS X these are instead in /System/Library/Frameworks/JavaVM.framework/Classes as classes.jar and ui.jar
+#     in sun.boot.class.path property
+#  - extension classes: in <JRE>/jre/lib/ext/*.jar directory of JRE/JDK
+#  - user-defined classes: in class path $CLASSPATH
+#       --classpath command overrides this
+#       --jar <jarfile> option forces all user classes to come from this jarfile alone
+#
+# Maybe include http://mojo.codehaus.org/animal-sniffer/java-boot-classpath-detector/index.html
+#
+# Need to process META-INF/MANIFEST.MF inside Jar files, which extends the classpath for loading classes within that jar file
+MANIFEST_CLASSPATH = re.compile(r'^Class-Path: (?P<classpath>.*)\s*$')  # space-separated list of relative paths to jarfiles
+
+
+class LDDOpts(_Opts):
+    OPT_INFO = (_Opts.OPT_INFO +
+                (("c:", "classpath=", "class search path of directories and jar files (default $CLASSPATH)", None, None, None),
+                 ("b:", "bootclasspath=", "class search path for bootstrap classes (default @@@)", None, None, None),
+                 ("r", "resolve-all", "check all references are satisfied (slower)", None, None, None),
+                 ))
+
+    def __init__(self, message):
+        self.message = message
+        self.filters = set([resolve_jar, remove_defined])
+        self.sorts = []
+        self.displays = set([normal_display])  # @@@@ remove
+        self.classpath = os.environ.get("CLASSPATH", ".").split(":")
+        self.bootclasspath = os.environ.get("JAVA_HOME", ".")  # @@@@
+        self.resolve_all = False
+
+    def process_opt(self, opt, arg):
+        if opt in ("-c", "--classpath"):
+            self.classpath = arg.split(":")
+            return True
+        elif opt in ("-b", "--bootclasspath"):
+            self.bootclasspath = arg.split(":")
+            return True
+        elif opt in ("-r", "--resolve-all"):
+            self.resolve_all = True
+            return True
+        elif super(LDDOpts, self).process_opt(opt, arg):
+            return True
+        else:
+            return False
+
+
+def package_name(jcls):
+    idx = jcls.rfind('.')
+    if idx == -1:
+        return jcls
+    else:
+        return jcls[:idx]
+
+
+if __name__ == "__main__":
+    if len(sys.argv) <= 1:
+        print >> sys.stderr, "No files were specified on the command line.  Try --help."
+    else:
+        opts = LDDOpts(__doc__)
+        filenames = opts.getopts(sys.argv[1:])
+        if not opts.resolve_all:
+            opts.filters.add(remove_nonclass)
+        show_filename_prolog = (len(filenames) > 1)
+        for arg in filenames:
+            if arg.endswith(".jar"):
+                jarfile = arg
+                clist = jar_classes(arg)
+            else:
+                jarfile = None
+                with open(arg, "rb") as f:
+                    clist = [(arg, ClassFile(f.read()))]
+            resultslist = [(jarfile, filename, sym) for filename, c in clist for sym in c.dump()]
+
+        # Resolve references within the set of destination files, return only unresolved-class symbols
+        unresolveds = opts.process(resultslist)
+
+        # Find the packages corresponding to the classes
+        packages = []
+        ref_to = {}
+        for jarfile, classfile, symbol in unresolveds:
+            if jarfile not in ref_to:
+                ref_to[jarfile] = set()
+            jpkg = package_name(symbol.jcls)
+            if jpkg not in ref_to[jarfile]:
+                ref_to[jarfile].add(jpkg)
+                packages.append((jarfile, jpkg))
+            
+        prev_file = None
+        for jarfile, jpkg in packages:
+            this_file = jarfile
+            if (show_filename_prolog and prev_file != this_file):
+                if jarfile is None:
+                    print "%s:" % classfile
+                else:
+                    print "%s:" % jarfile
+                prev_file = this_file
+            print "\t %s => %s" % (jpkg, '@@@')
+
+        # @@@ alternatively, display the unresolved classes individually?
