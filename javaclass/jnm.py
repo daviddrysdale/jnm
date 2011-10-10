@@ -133,8 +133,11 @@ def findref(jcls, ii):
                 # Not interested in arrays of primitive types
                 return None, None, None
             else:
-                # Array of objects
-                return None, fqcn(class_desc), None
+                # Array of objects; the reference is to the component class
+                class_desc = class_desc[ii + 1:]
+                end_idx = class_desc.find(';')
+                assert end_idx == (len(class_desc) - 1)
+                return None, fqcn(class_desc[:end_idx]), None
     elif isinstance(const, FieldRefInfo):
         return const.get_descriptor(), fqcn(unicode(const.get_class())), const.get_name()
     elif isinstance(const, MethodRefInfo):
