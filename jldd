@@ -153,4 +153,7 @@ if __name__ == "__main__":
             if filename in unresolveds:
                 print "Failed to resolve:"
                 for jarfile, classfile, symbol in unresolveds[filename]:
-                    print " %s(%s): %s" % (jarfile, classfile, symbol.unique_name)
+                    if jarfile is None:
+                        print " %s: %s" % (classfile, symbol.unique_name)
+                    else:
+                        print " %s(%s): %s" % (jarfile, classfile, symbol.unique_name)
