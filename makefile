@@ -26,10 +26,10 @@ testjnm: test.jar
 bin/%.class: tests/%.java
 	javac -d bin $(TEST_JAVA_FILES)
 
-testjldd: test.jar FindJRE.class
+testjldd: test.jar java/FindJRE.class
 	jldd test.jar
 
-%.class: %.java
+java/%.class: java/%.java
 	javac $<
 
 javap.out/%.dis: bin/%.class
