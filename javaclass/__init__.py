@@ -20,3 +20,12 @@ with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 __version__ = "0.3"
+
+from classfile import ClassFile
+from jarfile import jar_classes
+from jnm import Symbol
+
+
+__all__ = ['ClassFile',
+           'jar_classes'
+           'Symbol']

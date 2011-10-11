@@ -4,3 +4,8 @@ test.jar
 bin
 jdump.out
 javap.out
+dist
+deb_dist
+MANIFEST
+jnm.egg-info
+build
