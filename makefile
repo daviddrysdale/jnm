@@ -52,7 +52,31 @@ jdump.out:
 	mkdir $@/testpackage/subpackage
 
 clean:
-	rm -rf build
+	rm -rf build deb_dist dist
 	rm -f test.jar
 	rm -f javaclass/*.pyc javaclass/*.py,cover
 	rm -rf bin jdump.out javap.out
+
+VERSION=$(shell grep __version__ javaclass/__init__.py | sed 's/__version__ = "\(.*\)"/\1/')
+TARBALL=dist/jnm-$(VERSION).tar.gz
+# Build setuptools packaged tarball $(TARBALL)
+sdist: java/FindJRE.class
+	python setup.py sdist
+$(TARBALL): sdist
+
+install:
+	python setup.py build
+	sudo python setup.py install
+
+distclean: clean
+	rm -rf jnm.egg-info
+	rm -f FindJRE.class
+
+# Create Debian package.  Requires py2dsc, included in the python-stdeb package.
+DEB_VERSION=$(VERSION)-1_all
+deb: deb_dist/python-jnm_$(DEB_VERSION).deb
+
+deb_dist/python-jnm_$(VERSION)-1_all.deb: $(TARBALL)
+	py2dsc $(TARBALL)
+	cd deb_dist/jnm-$(VERSION) && dpkg-buildpackage -us -uc -nc
+

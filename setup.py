@@ -56,4 +56,3 @@ distutils.core.setup(name='jnm',
                                   'Topic :: Software Development :: Disassemblers',
                                   ],
                      )
-

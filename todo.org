@@ -12,9 +12,11 @@
   CLOSED: [2011-10-05 Wed 21:01]
 * DONE check exception processing -- are there references needed there?
   CLOSED: [2011-10-05 Wed 19:32]
-* TODO setup.py
+* DONE setup.py
+  CLOSED: [2011-10-12 Wed 07:40]
 * TODO jldd
 * DONTDO jldd option to just show packages or to show all class references
   CLOSED: [2011-10-09 Sun 20:59]
-* TODO README.md
+* DONE README.md
+  CLOSED: [2011-10-12 Wed 07:40]
 * TODO Are classes in method parameter lists showing up as references?
