@@ -26,11 +26,11 @@ testjnm: test.jar
 bin/%.class: tests/%.java
 	javac -d bin $(TEST_JAVA_FILES)
 
-testjldd: test.jar java/FindJRE.class
+testjldd: test.jar java_make
 	jldd test.jar
 
-java/%.class: java/%.java
-	javac $<
+java_make:
+	cd java && $(MAKE)
 
 javap.out/%.dis: bin/%.class
 	javap -private -s -verbose -classpath bin $* > $@
@@ -51,11 +51,14 @@ jdump.out:
 	mkdir $@/testpackage
 	mkdir $@/testpackage/subpackage
 
-clean:
+clean: java_clean
 	rm -rf build deb_dist dist
 	rm -f test.jar
 	rm -f javaclass/*.pyc javaclass/*.py,cover
 	rm -rf bin jdump.out javap.out
+
+java_clean:
+	cd java && $(MAKE) clean
 
 VERSION=$(shell grep __version__ javaclass/__init__.py | sed 's/__version__ = "\(.*\)"/\1/')
 TARBALL=dist/jnm-$(VERSION).tar.gz

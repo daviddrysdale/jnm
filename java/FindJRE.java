@@ -4,8 +4,20 @@
 
 class FindJRE {
   public static void main(String[] args) {
-    System.out.println("Boot-Class-Path: " + System.getProperty("sun.boot.class.path"));
-    System.out.println("Class-Path: " + System.getProperty("java.class.path"));
-    System.out.println("Class-Path-Separator: " + System.getProperty("path.separator"));
+    String classPath = System.getProperty("sun.boot.class.path");
+    if (classPath == null) {
+      classPath = System.getProperty("java.boot.class.path");
+    }
+    if (classPath != null) {
+      System.out.println("Boot-Class-Path: " + classPath);
+    }
+    classPath = System.getProperty("java.class.path");
+    if (classPath != null) {
+      System.out.println("Class-Path: " + classPath);
+    }
+    String separator = System.getProperty("path.separator");
+    if (separator != null) {
+      System.out.println("Class-Path-Separator: " + separator);
+    }
   }
 }
