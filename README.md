@@ -10,7 +10,7 @@ This is a collection of tools for investigating Java class files and jar files.
 
 License
 -------
-This code is covered by the GNU Lesser General Public License, version 3 or higher.
+This code is covered by the [GNU Lesser General Public License](http://www.gnu.org/licenses/lgpl.html), version 3 or higher.
 
 Example Usage
 -------------
