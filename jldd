@@ -4,33 +4,90 @@
 jldd displays the package dependencies of each file in the argument list.
 """
 import os
+import platform
 import sys
 import re
 import zipfile
+import subprocess
 
 from javaclass.classfile import ClassFile
 from javaclass.jarfile import jar_classes
 from javaclass.jnm import _Opts, resolve_jar, remove_defined, remove_nonclass
 
-# search for and load classes in order:
-#  - bootstrap classes: java platform, public classes of Java Class Library $JAVA_HOME/jre/lib/*.jar, especially rt.jar
-#     on Mac OS X these are instead in /System/Library/Frameworks/JavaVM.framework/Classes as classes.jar and ui.jar
+# Java classes are searched for and loaded from:
+
+#  - bootstrap classes: the Java platform, and public classes of the Java
+#    Class Library.  Sometimes in $JAVA_HOME/jre/lib/*.jar, particularly
+#    $JAVA_HOME/jre/lib/rt.jar.  On Mac OS X these are instead in
+#    /System/Library/Frameworks/JavaVM.framework/Classes/classes.jar and
+#    /System/Library/Frameworks/JavaVM.framework/Classes/ui.jar.  More
+#    generally, the sun.boot.class.path property holds this path.
 #     in sun.boot.class.path property
-#  - extension classes: in <JRE>/jre/lib/ext/*.jar directory of JRE/JDK
-#  - user-defined classes: in class path $CLASSPATH
-#       --classpath command overrides this
-#       --jar <jarfile> option forces all user classes to come from this jarfile alone
 #
-# Maybe include http://mojo.codehaus.org/animal-sniffer/java-boot-classpath-detector/index.html
+#  - extension classes: Sometimes in $JAVA_HOME/jre/lib/ext/*.jar
 #
-# Need to process META-INF/MANIFEST.MF inside Jar files, which extends the classpath for loading classes within that jar file
-MANIFEST_CLASSPATH = re.compile(r'^Class-Path: (?P<classpath>.*)\s*$')  # space-separated list of relative paths to jarfiles
+#  - user-defined classes: Search the user's class path (either the
+#    --classpath command-line option or $CLASSPATH environment variable).
+#
+#  - jar-file extended classpath: When classes are loaded from a jar file,
+#    the classpath is extended by the contents of the "Class-Path:" field in
+#    the META-INF/MANIFEST.MF file of the jar file.
+#
+MANIFEST_CLASSPATH_RE = re.compile(r'^Class-Path: (?P<classpath>.*)\s*$', re.MULTILINE)  # space-separated list of relative paths to jarfiles
+
+BOOT_CLASSPATH_RE = re.compile(r'^Boot-Class-Path: (?P<classpath>.*)\s*$', re.MULTILINE)
+CLASSPATH_SEPARATOR_RE = re.compile(r'^Class-Path-Separator: (?P<sep>.)\s*$', re.MULTILINE)
+
+MACOSX_CLASSDIR = "/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes"
+MACOSX_CLASSJARS = ('jsfd.jar', 'classes.jar', 'ui.jar', 'laf.jar', 'sunrsasign.jar', 'jsse.jar', 'jce.jar', 'charsets.jar')
+
+
+def _default_macosx_boot_classpath():
+    return [os.path.join(MACOSX_CLASSDIR, jarfile) for jarfile in MACOSX_CLASSJARS]
+
+
+def _find_jre_boot_classpath():
+    # Move to the directory holding FindJRE.class
+    startdir = os.getcwd()
+    os.chdir('java')  # @@@
+    # Run Java on the class file and slurp results
+    results = subprocess.Popen(('java', '-jar', 'FindJRE.jar'),
+                               stdout=subprocess.PIPE).communicate()[0]
+    os.chdir(startdir)
+    m = BOOT_CLASSPATH_RE.search(results)
+    if m:
+        sep = ':'
+        msep = CLASSPATH_SEPARATOR_RE.search(results)
+        if msep:
+            sep = msep.group('sep')
+        return m.group('classpath').split(sep)
+    return None
+
+
+def boot_classpath():
+    # Try to run FindJRE.class to use the local Java installation to find boot path
+    classpath = _find_jre_boot_classpath()
+    if classpath is not None:
+        return classpath
+    # Fall back to looking in some OS-specific common places
+    if platform.system() == "Darwin":
+        return _default_macosx_boot_classpath()
+    elif os.name == "posix":
+        return None  # @@@
+    elif os.name == "nt":
+        return None  # @@@
+    else:
+        print >> sys.stderr, "Failed to find Java boot class path.  Please ensure java is in your path."
+        return None
+
+
+BOOT_CLASSPATH = boot_classpath()
 
 
 class LDDOpts(_Opts):
     OPT_INFO = (_Opts.OPT_INFO +
                 (("c:", "classpath=", "class search path of directories and jar files (default $CLASSPATH)", None, None, None),
-                 ("b:", "bootclasspath=", "class search path for bootstrap classes (default @@@)", None, None, None),
+                 ("b:", "bootclasspath=", "class search path for bootstrap classes", None, None, None),
                  ("r", "resolve-all", "check all references are satisfied (slower)", None, None, None),
                  ))
 
@@ -40,7 +97,7 @@ class LDDOpts(_Opts):
         self.sorts = []
         self.displays = set()
         self.classpath = os.environ.get("CLASSPATH", ".").split(":")
-        self.bootclasspath = os.environ.get("JAVA_HOME", ".")  # @@@@
+        self.bootclasspath = BOOT_CLASSPATH
         self.resolve_all = False
 
     def process_opt(self, opt, arg):
@@ -49,9 +106,6 @@ class LDDOpts(_Opts):
             return True
         elif opt in ("-b", "--bootclasspath"):
             self.bootclasspath = arg.split(":")
-            return True
-        elif opt in ("-r", "--resolve-all"):
-            self.resolve_all = True
             return True
         elif super(LDDOpts, self).process_opt(opt, arg):
             return True
@@ -67,6 +121,21 @@ def package_name(jcls):
         return jcls[:idx]
 
 
+def _list_classfiles(results, topdir, subdir):
+    fulldir = os.path.join(topdir, subdir)
+    for filename in os.listdir(fulldir):
+        fullname = os.path.join(fulldir, filename)
+        if os.path.isdir(fullname):
+            _list_classfiles(results, topdir, os.path.join(subdir, filename))
+        elif os.path.isfile(fullname):
+            basename, ext = os.path.splitext(filename)
+            if ext == ".class":
+                classname = os.path.join(subdir, basename)
+                classname = classname.replace(os.sep, ".")
+                if classname not in results:
+                    results[classname] = topdir
+
+
 def get_classes(classpath):
     results = {}  # classname => set of owning jarfiles/top-level directories
     for top in classpath:
@@ -79,7 +148,9 @@ def get_classes(classpath):
                     if classname not in results:
                         results[classname] = top
         elif os.path.isdir(top):
-            pass  # @@@
+            if not top.endswith(os.sep):
+                top = top + os.sep
+            _list_classfiles(results, top, "")
     return results
 
 
@@ -89,8 +160,6 @@ if __name__ == "__main__":
     else:
         opts = LDDOpts(__doc__)
         filenames = opts.getopts(sys.argv[1:])
-        if not opts.resolve_all:
-            opts.filters.add(remove_nonclass)
         show_filename_prolog = (len(filenames) > 1)
         for arg in filenames:
             if arg.endswith(".jar"):
@@ -102,44 +171,38 @@ if __name__ == "__main__":
                     clist = [(arg, ClassFile(f.read()))]
             resultslist = [(jarfile, filename, sym) for filename, c in clist for sym in c.dump()]
 
-        # Resolve references within each of the set of destination files, return only unresolved symbols.
-        # Typically (i.e. when opts.resolve_all not set) this is just unresolved class refs.
+        # Resolve references within each of the set of destination files, return only unresolved class symbols.
         references = opts.process(resultslist)
 
         # Hunt through the classpaths to find all available classes (but do
         # not look inside those classes)
-        opts.bootclasspath = "/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsfd.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/classes.jar:/System/Library/Frameworks/JavaVM.framework/Frameworks/JavaRuntimeSupport.framework/Resources/Java/JavaRuntimeSupport.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/ui.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/laf.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/sunrsasign.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jsse.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/jce.jar:/System/Library/Java/JavaVirtualMachines/1.6.0.jdk/Contents/Classes/charsets.jar".split(':')
-        # @@@
         bootclass = get_classes(opts.bootclasspath)
         jclass = get_classes(opts.classpath)
 
-        if opts.resolve_all:
-            # @@@ alternatively, display the unresolved classes individually?
-            pass  # @@@@
-        else:
-            mappings = []
-            unresolveds = {}
-            ref_to = {}
-            for jarfile, classfile, symbol in references:
-                if jarfile is None:
-                    this_file = classfile
-                else:
-                    this_file = jarfile
-                if this_file not in ref_to:
-                    ref_to[this_file] = {}
-                jpkg = package_name(symbol.jcls)
-                if jpkg not in ref_to[this_file]:
-                    ref_to[this_file][jpkg] = set()
-                if symbol.jcls in bootclass:
-                    mappings.append((jarfile, classfile, symbol, bootclass[symbol.jcls]))
-                    ref_to[this_file][jpkg].add(bootclass[symbol.jcls])
-                elif symbol.jcls in jclass:
-                    mappings.append((jarfile, classfile, symbol, jclass[symbol.jcls]))
-                    ref_to[this_file][jpkg].add(jclass[symbol.jcls])
-                else:
-                    if this_file not in unresolveds:
-                        unresolveds[this_file] = []
-                    unresolveds[this_file].append((jarfile, classfile, symbol))
+        # Now find where each referenced class should get resolved via
+        mappings = []
+        unresolveds = {}
+        ref_to = {}
+        for jarfile, classfile, symbol in references:
+            if jarfile is None:
+                this_file = classfile
+            else:
+                this_file = jarfile
+            if this_file not in ref_to:
+                ref_to[this_file] = {}
+            jpkg = package_name(symbol.jcls)
+            if jpkg not in ref_to[this_file]:
+                ref_to[this_file][jpkg] = set()
+            if symbol.jcls in bootclass:
+                mappings.append((jarfile, classfile, symbol, bootclass[symbol.jcls]))
+                ref_to[this_file][jpkg].add(bootclass[symbol.jcls])
+            elif symbol.jcls in jclass:
+                mappings.append((jarfile, classfile, symbol, jclass[symbol.jcls]))
+                ref_to[this_file][jpkg].add(jclass[symbol.jcls])
+            else:
+                if this_file not in unresolveds:
+                    unresolveds[this_file] = []
+                unresolveds[this_file].append((jarfile, classfile, symbol))
 
         for filename in filenames:
             if show_filename_prolog:

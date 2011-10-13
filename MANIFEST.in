@@ -1,0 +1,9 @@
+recursive-include javaclass *.py
+include MANIFEST.in
+include java/FindJRE.jar
+include jnm
+include jldd
+include jdemangle
+include jdump
+include setup.py
+exclude .*ignore
