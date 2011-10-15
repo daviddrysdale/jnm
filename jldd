@@ -160,11 +160,11 @@ def get_classes(classpath):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1:
+    opts = LDDOpts(__doc__)
+    filenames = opts.getopts(sys.argv[1:])
+    if len(filenames) == 0:
         print >> sys.stderr, "No files were specified on the command line.  Try --help."
     else:
-        opts = LDDOpts(__doc__)
-        filenames = opts.getopts(sys.argv[1:])
         show_filename_prolog = (len(filenames) > 1)
         for arg in filenames:
             if arg.endswith(".jar"):

@@ -78,11 +78,11 @@ class NMOpts(_Opts):
             return False
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 1:
+    opts = NMOpts(__doc__)
+    args = opts.getopts(sys.argv[1:])
+    if len(args) <= 1:
         print >> sys.stderr, "No classes were specified on the command line.  Try --help."
     else:
-        opts = NMOpts(__doc__)
-        args = opts.getopts(sys.argv[1:])
         show_filename_prolog = (len(args) > 1)
         for arg in args:
             if arg.endswith(".jar"):
