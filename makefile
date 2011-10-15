@@ -5,6 +5,13 @@ TEST_BIN_CLASS_FILES = $(subst tests/,bin/,$(TEST_JAVA_FILES:.java=.class))
 TEST_JAVAP_FILES = $(subst tests/,javap.out/,$(TEST_JAVA_FILES:.java=.dis))
 TEST_JDUMP_FILES = $(subst tests/,jdump.out/,$(TEST_JAVA_FILES:.java=.dis))
 
+all: codegen test
+
+codegen: java_make javaclass/findjre.py
+
+javaclass/findjre.py: java/FindJRE.jar
+	python makefindjre.py $< $@
+
 test: testclasses testjar testjdump testjnm testjldd
 
 testclasses: bin $(TEST_BIN_CLASS_FILES)

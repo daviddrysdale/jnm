@@ -8,11 +8,14 @@ import platform
 import sys
 import re
 import zipfile
+import tempfile
 import subprocess
+import base64
 
 from javaclass.classfile import ClassFile
 from javaclass.jarfile import jar_classes
 from javaclass.jnm import _Opts, resolve_jar, remove_defined, remove_nonclass
+from javaclass.findjre import FINDJRE_JAR
 
 # Java classes are searched for and loaded from:
 
@@ -47,13 +50,15 @@ def _default_macosx_boot_classpath():
 
 
 def _find_jre_boot_classpath():
-    # Move to the directory holding FindJRE.class
-    startdir = os.getcwd()
-    os.chdir('java')  # @@@
+    # Create the jar file we need in a temporary file
+    jarfile = tempfile.NamedTemporaryFile(suffix=".jar", delete=False)
+    jarfile.write(base64.b64decode(FINDJRE_JAR))
+    jarfile.close()
+
     # Run Java on the class file and slurp results
-    results = subprocess.Popen(('java', '-jar', 'FindJRE.jar'),
+    results = subprocess.Popen(('java', '-jar', jarfile.name),
                                stdout=subprocess.PIPE).communicate()[0]
-    os.chdir(startdir)
+    os.remove(jarfile.name)
     m = BOOT_CLASSPATH_RE.search(results)
     if m:
         sep = ':'
@@ -77,7 +82,7 @@ def boot_classpath():
     elif os.name == "nt":
         return None  # @@@
     else:
-        print >> sys.stderr, "Failed to find Java boot class path.  Please ensure java is in your path."
+        print >> sys.stderr, "Failed to find Java boot class path.  Please ensure java is in your path or set --bootclasspath."
         return None
 
 

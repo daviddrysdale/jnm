@@ -14,7 +14,8 @@
   CLOSED: [2011-10-05 Wed 19:32]
 * DONE setup.py
   CLOSED: [2011-10-12 Wed 07:40]
-* TODO jldd
+* DONE jldd
+  CLOSED: [2011-10-15 Sat 20:41]
 * DONTDO jldd option to just show packages or to show all class references
   CLOSED: [2011-10-09 Sun 20:59]
 * DONE README.md
