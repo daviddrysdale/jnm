@@ -19,4 +19,5 @@
   CLOSED: [2011-10-09 Sun 20:59]
 * DONE README.md
   CLOSED: [2011-10-12 Wed 07:40]
-* TODO Are classes in method parameter lists showing up as references?
+* DONTDO Are classes in method parameter lists showing up as references?
+  CLOSED: [2011-10-15 Sat 18:21]

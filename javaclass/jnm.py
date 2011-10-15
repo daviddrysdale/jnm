@@ -183,6 +183,11 @@ def _MethodInfo_dump(self):
                       jcls,
                       symname,
                       self.get_descriptor())]
+    # Arguably, the returned list of symbols should also include Symbols of
+    # type REF_CLASS for each of the classes mentioned in the parameter list
+    # and return type of the method.  However, if the method does indeed just
+    # pass through the parameter/return value, then it's the calling & called
+    # methods that actually reference the class, not this method.
     if code_attr is not None:
         results.extend(code_attr.dump())
     if exc_attr is not None:
