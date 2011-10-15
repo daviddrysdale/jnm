@@ -98,7 +98,7 @@ class LDDOpts(_Opts):
 
     def __init__(self, message):
         self.message = message
-        self.filters = set([resolve_jar, remove_defined])
+        self.filters = set([resolve_jar, remove_defined, remove_nonclass])
         self.sorts = []
         self.displays = set()
         self.classpath = os.environ.get("CLASSPATH", ".").split(":")
