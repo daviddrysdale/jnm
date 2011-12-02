@@ -80,7 +80,7 @@ class NMOpts(_Opts):
 if __name__ == "__main__":
     opts = NMOpts(__doc__)
     args = opts.getopts(sys.argv[1:])
-    if len(args) <= 1:
+    if len(args) < 1:
         print >> sys.stderr, "No classes were specified on the command line.  Try --help."
     else:
         show_filename_prolog = (len(args) > 1)
