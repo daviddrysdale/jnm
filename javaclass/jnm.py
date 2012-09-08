@@ -95,6 +95,9 @@ class Symbol(object):
         else:
             return u"%s %s %s.%s:%s" % (intro, self.symtype, self.jcls, self.symname, self.descriptor)
 
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
     def demangled(self):
         if self.value is None:
             intro = u"        "
