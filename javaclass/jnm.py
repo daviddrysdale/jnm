@@ -98,6 +98,12 @@ class Symbol(object):
     def __str__(self):
         return unicode(self).encode('utf-8')
 
+    def is_def(self):
+        return self.symtype.upper() in Symbol.DEF_SYMTYPES
+
+    def is_ref(self):
+        return not self.is_def()
+
     def demangled(self):
         if self.value is None:
             intro = u"        "
@@ -452,11 +458,11 @@ def remove_nonclass(symlist):
 
 
 def remove_defined(symlist):
-    return [sym for sym in symlist if sym[2].symtype.upper() not in Symbol.DEF_SYMTYPES]
+    return [sym for sym in symlist if sym[2].is_ref()]
 
 
 def remove_undefined(symlist):
-    return [sym for sym in symlist if sym[2].symtype.upper() in Symbol.DEF_SYMTYPES]
+    return [sym for sym in symlist if sym[2].is_def()]
 
 
 def remove_private(symlist):
@@ -470,9 +476,7 @@ ALL_FILTER_FNS = (remove_nonclass, resolve_class, resolve_jar, resolve_all, remo
 def alphabetic_sort(symlist):
     # Symbols within the class don't have a class prefix; add it, so the alpha sort is sensible
     return sorted(symlist, key=lambda x: "%s:%s:%s" % (x[0], x[1],
-                                                       "%s.%s" % (x[1], x[2].symname)
-                                                       if x[2].symtype.upper() in Symbol.DEF_SYMTYPES
-                                                       else x[2].symname))
+                                                       "%s.%s" % (x[1], x[2].symname) if x[2].is_def() else x[2].symname))
 
 
 def numeric_sort(symlist):
