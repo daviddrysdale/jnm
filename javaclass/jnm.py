@@ -468,11 +468,16 @@ ALL_FILTER_FNS = (remove_nonclass, resolve_class, resolve_jar, resolve_all, remo
 
 # Sort functions; take a list of 3-tuples (jarfile, classfile, symbol)
 def alphabetic_sort(symlist):
-    return sorted(symlist, key=lambda x: x[2].symname)
+    # Symbols within the class don't have a class prefix; add it, so the alpha sort is sensible
+    return sorted(symlist, key=lambda x: "%s:%s:%s" % (x[0], x[1],
+                                                       "%s.%s" % (x[1], x[2].symname)
+                                                       if x[2].symtype.upper() in Symbol.DEF_SYMTYPES
+                                                       else x[2].symname))
 
 
 def numeric_sort(symlist):
-    return sorted(symlist, key=lambda x: x[2].value)
+    # Expand numbers and None to ensure alpha sort works as intended
+    return sorted(symlist, key=lambda x: "%s:%s:%s" % (x[0], x[1], "FFFFFFFF" if x[2].value is None else "%08x" % x[2].value))
 
 
 def noop_sort(symlist):
